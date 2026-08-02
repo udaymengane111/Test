@@ -44,8 +44,11 @@ export function MarkAttendance() {
       next[s.id] = found?.status ?? 'present';
     }
     setMarks(next);
-    setSavedFlash(false);
   }, [classId, date, students, existingKey, getAttendanceForClassDate]);
+
+  useEffect(() => {
+    setSavedFlash(false);
+  }, [classId, date]);
 
   const selectedClass = classes.find((c) => c.id === classId);
   const holiday = isSchoolHoliday(date);

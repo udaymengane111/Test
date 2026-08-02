@@ -37,12 +37,13 @@ export function activeStudentsInClass(students: Student[], classId: string): Stu
 
 export function attendanceStats(records: AttendanceRecord[]) {
   const total = records.length;
-  const present = records.filter((r) => r.status === 'present' || r.status === 'late').length;
+  const present = records.filter((r) => r.status === 'present').length;
   const absent = records.filter((r) => r.status === 'absent').length;
   const late = records.filter((r) => r.status === 'late').length;
   const halfday = records.filter((r) => r.status === 'halfday').length;
   const leave = records.filter((r) => r.status === 'leave').length;
-  const pct = total === 0 ? 0 : Math.round((present / total) * 100);
+  const attended = present + late;
+  const pct = total === 0 ? 0 : Math.round((attended / total) * 100);
   return { total, present, absent, late, halfday, leave, pct };
 }
 
