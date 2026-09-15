@@ -74,6 +74,7 @@ object WornNotifications {
             .setContentText(activityName)
             .setContentIntent(open)
             .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .addAction(0, "PUT BACK", putBack)
             .addAction(0, "SNOOZE 5 MIN", snooze)

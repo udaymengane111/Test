@@ -13,6 +13,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.worn.ui.WornRoot
 import app.worn.ui.WornViewModel
 import app.worn.ui.theme.WornTheme
+import app.worn.service.RemovalTimerService
 
 class MainActivity : ComponentActivity() {
     private val viewModel: WornViewModel by viewModels {
@@ -22,6 +23,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        RemovalTimerService.sync(this)
         setContent {
             WornTheme {
                 val state by viewModel.uiState.collectAsStateWithLifecycle()

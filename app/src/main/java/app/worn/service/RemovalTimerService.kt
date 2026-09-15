@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 class RemovalTimerService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var ticker: Job? = null
+    private var expiryPostedForId: String? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -67,7 +68,10 @@ class RemovalTimerService : Service() {
                         WornNotifications.ongoing(this@RemovalTimerService, n, current, System.currentTimeMillis()),
                     )
                     val snap = ActivityTimerCalculator.snapshot(current, System.currentTimeMillis())
-                    if (snap.overdue && !snap.paused) {
+                    if (!snap.overdue) {
+                        expiryPostedForId = null
+                    } else if (!snap.paused && expiryPostedForId != current.id) {
+                        expiryPostedForId = current.id
                         manager.notify(
                             WornNotifications.ID_TIMER_DONE,
                             WornNotifications.timerDone(this@RemovalTimerService, n),
