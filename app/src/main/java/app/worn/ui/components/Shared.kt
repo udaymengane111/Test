@@ -56,7 +56,7 @@ fun DayMetrics(
             if (targetReached) "Target reached" else DurationFormat.hoursMinutesCompact(remainingMillis),
             emphasize = targetReached,
         )
-        Metric("Not worn", DurationFormat.hoursMinutesCompact(notWornMillis))
+        Metric("Out today", DurationFormat.hoursMinutesCompact(notWornMillis))
     }
 }
 
@@ -246,6 +246,44 @@ fun DurationStepper(
             modifier = Modifier
                 .size(44.dp)
                 .clickable { onChange((minutes + 5).coerceAtMost(180)) }
+                .semantics { role = Role.Button; contentDescription = "Increase $label" },
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+fun DaysStepper(
+    label: String,
+    days: Int,
+    onChange: (Int) -> Unit,
+) {
+    val colors = WornTheme.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, color = colors.text, fontSize = 17.sp, modifier = Modifier.weight(1f))
+        Text(
+            "−",
+            color = colors.secondary,
+            fontSize = 22.sp,
+            modifier = Modifier
+                .size(44.dp)
+                .clickable { onChange((days - 1).coerceAtLeast(1)) }
+                .semantics { role = Role.Button; contentDescription = "Decrease $label" },
+            textAlign = TextAlign.Center,
+        )
+        Text("$days days", color = colors.text, fontSize = 16.sp, modifier = Modifier.width(80.dp), textAlign = TextAlign.Center)
+        Text(
+            "+",
+            color = colors.secondary,
+            fontSize = 22.sp,
+            modifier = Modifier
+                .size(44.dp)
+                .clickable { onChange((days + 1).coerceAtMost(90)) }
                 .semantics { role = Role.Button; contentDescription = "Increase $label" },
             textAlign = TextAlign.Center,
         )

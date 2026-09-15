@@ -101,11 +101,28 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
             Column(horizontalAlignment = Alignment.End) {
                 state.currentAligner?.let { set ->
                     Text("Aligner ${set.setNumber}", color = colors.secondary, fontSize = 14.sp)
-                    Text(
-                        set.startDate.format(DateTimeFormatter.ofPattern("d MMM")),
-                        color = colors.tertiary,
-                        fontSize = 12.sp,
-                    )
+                    val treatment = state.treatment
+                    if (treatment?.isOverdue == true) {
+                        Text("Replacement overdue", color = colors.warning, fontSize = 12.sp)
+                        Text(
+                            "${treatment.overdueDays} day${if (treatment.overdueDays == 1L) "" else "s"}",
+                            color = colors.warning,
+                            fontSize = 12.sp,
+                        )
+                    } else {
+                        Text(
+                            "Started ${set.startDate.format(DateTimeFormatter.ofPattern("d MMM"))}",
+                            color = colors.tertiary,
+                            fontSize = 12.sp,
+                        )
+                        treatment?.expectedNextDate?.let { next ->
+                            Text(
+                                "Next ${next.format(DateTimeFormatter.ofPattern("d MMM"))}",
+                                color = colors.tertiary,
+                                fontSize = 12.sp,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -186,7 +203,7 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
                                 fontSize = 40.sp,
                                 fontWeight = FontWeight.Light,
                             )
-                            Text("remaining", color = colors.secondary, fontSize = 15.sp)
+                            Text("left for ${activityName.lowercase()}", color = colors.secondary, fontSize = 15.sp)
                         }
                         overdue == true -> {
                             Text("Time’s up", color = colors.warning, fontSize = 13.sp, letterSpacing = 1.2.sp)
@@ -205,7 +222,7 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
                                 fontSize = 40.sp,
                                 fontWeight = FontWeight.Light,
                             )
-                            Text("remaining", color = colors.secondary, fontSize = 15.sp)
+                            Text("left for ${activityName.lowercase()}", color = colors.secondary, fontSize = 15.sp)
                         }
                     }
                 }
@@ -315,7 +332,8 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
             activities = state.activities,
             onDismiss = { adding = false },
             onAdd = { kind, start, end, activityId ->
-                vm.addSession(kind, start, end, activityId, 15)
+                val minutes = state.activities.firstOrNull { it.id == activityId }?.defaultDurationMinutes
+                vm.addSession(kind, start, end, activityId, minutes)
                 adding = false
             },
         )

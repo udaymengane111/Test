@@ -4,11 +4,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
@@ -26,14 +29,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.BasicTextField
 import app.worn.domain.model.ActivityType
+import app.worn.notifications.ReplacementReminders
 import app.worn.ui.TodayUiState
 import app.worn.ui.WornViewModel
+import app.worn.ui.components.DaysStepper
 import app.worn.ui.components.DurationStepper
 import app.worn.ui.components.SectionLabel
 import app.worn.ui.theme.WornTheme
@@ -42,6 +48,7 @@ import java.util.UUID
 @Composable
 fun SettingsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
     val colors = WornTheme.colors
+    val context = LocalContext.current
     val settings = state.settings ?: return
     var customHours by remember { mutableStateOf("") }
     var adding by remember { mutableStateOf(false) }
@@ -52,6 +59,7 @@ fun SettingsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp),
     ) {
@@ -181,6 +189,40 @@ fun SettingsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
             }) { Text("Save activity") }
         }
 
+        Spacer(Modifier.height(32.dp))
+        SectionLabel("Treatment plan")
+        Spacer(Modifier.height(8.dp))
+        Text("Replace aligner every", color = colors.text, fontSize = 16.sp)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "${settings.replacementIntervalDays} days",
+            color = colors.text,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Light,
+        )
+        Row {
+            listOf(7, 10, 14).forEach { days ->
+                val selected = settings.replacementIntervalDays == days
+                Text(
+                    "$days",
+                    color = if (selected) colors.text else colors.secondary,
+                    fontSize = 16.sp,
+                    modifier = Modifier
+                        .padding(end = 20.dp)
+                        .defaultMinSize(minHeight = 44.dp)
+                        .clickable {
+                            vm.updateReplacementInterval(days)
+                            ReplacementReminders.sync(context)
+                        }
+                        .padding(vertical = 10.dp),
+                )
+            }
+        }
+        DaysStepper("Custom days", settings.replacementIntervalDays.coerceIn(1, 90)) { days ->
+            vm.updateReplacementInterval(days)
+            ReplacementReminders.sync(context)
+        }
+
         Spacer(Modifier.height(28.dp))
         SectionLabel("Notifications")
         Row(
@@ -192,6 +234,22 @@ fun SettingsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
                 Text("When a removal timer ends", color = colors.tertiary, fontSize = 13.sp)
             }
             Switch(checked = settings.notificationsEnabled, onCheckedChange = vm::setNotifications)
+        }
+        Row(
+            Modifier.fillMaxWidth().defaultMinSize(minHeight = 52.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Aligner replacement reminder", color = colors.text, fontSize = 16.sp)
+                Text("When the next set is due", color = colors.tertiary, fontSize = 13.sp)
+            }
+            Switch(
+                checked = settings.replacementRemindersEnabled,
+                onCheckedChange = {
+                    vm.setReplacementReminders(it)
+                    ReplacementReminders.sync(context)
+                },
+            )
         }
 
         Spacer(Modifier.height(36.dp))

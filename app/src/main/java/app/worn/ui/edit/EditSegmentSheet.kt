@@ -1,5 +1,6 @@
 package app.worn.ui.edit
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,8 +26,10 @@ import androidx.compose.ui.unit.sp
 import app.worn.domain.engine.TimelineSegment
 import app.worn.domain.model.ActivityType
 import app.worn.domain.model.SessionKind
+import app.worn.ui.components.PastOrTodayDatePicker
 import app.worn.ui.theme.WornTheme
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -48,11 +51,22 @@ fun EditSegmentSheet(
     var startText by remember { mutableStateOf(startLocal.toLocalTime().format(fmt)) }
     var endText by remember { mutableStateOf(endLocal?.toLocalTime()?.format(fmt) ?: "") }
     var activityId by remember { mutableStateOf(segment.session.activityTypeId) }
+    var selectedDate by remember { mutableStateOf(startLocal.toLocalDate()) }
+    var showDate by remember { mutableStateOf(false) }
+    val today = LocalDate.now(zone)
+    val dateFmt = DateTimeFormatter.ofPattern("d MMM yyyy")
 
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = colors.background) {
         Column(Modifier.padding(24.dp).padding(bottom = 24.dp)) {
             Text("Edit interval", color = colors.text, fontSize = 20.sp)
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(8.dp))
+            Text(
+                selectedDate.format(dateFmt),
+                color = colors.secondary,
+                fontSize = 14.sp,
+                modifier = Modifier.clickable { showDate = true }.padding(vertical = 8.dp),
+            )
+            Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = startText,
                 onValueChange = { startText = it },
@@ -83,8 +97,8 @@ fun EditSegmentSheet(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 TextButton(onClick = onDelete) { Text("Delete", color = colors.warning) }
                 TextButton(onClick = {
-                    val start = parseTime(startText, startLocal.toLocalDate(), zone) ?: return@TextButton
-                    val end = endText.takeIf { it.isNotBlank() }?.let { parseTime(it, startLocal.toLocalDate(), zone) }
+                    val start = parseTime(startText, selectedDate, zone) ?: return@TextButton
+                    val end = endText.takeIf { it.isNotBlank() }?.let { parseTime(it, selectedDate, zone) }
                     onSave(
                         segment.session.copy(
                             startMillis = start,
@@ -95,6 +109,17 @@ fun EditSegmentSheet(
                 }) { Text("Save") }
             }
         }
+    }
+    if (showDate) {
+        PastOrTodayDatePicker(
+            selected = selectedDate,
+            today = today,
+            onDismiss = { showDate = false },
+            onConfirm = {
+                selectedDate = it
+                showDate = false
+            },
+        )
     }
 }
 

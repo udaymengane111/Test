@@ -55,6 +55,8 @@ data class UserSettings(
     val dailyWearTargetMinutes: Int,
     val onboardingComplete: Boolean,
     val notificationsEnabled: Boolean,
+    val replacementRemindersEnabled: Boolean,
+    val replacementIntervalDays: Int,
     val currentZoneId: String,
 )
 

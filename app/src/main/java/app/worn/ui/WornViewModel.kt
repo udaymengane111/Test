@@ -12,6 +12,11 @@ import app.worn.domain.engine.InstantClock
 import app.worn.domain.engine.SystemClock
 import app.worn.domain.engine.TimelineSegment
 import app.worn.domain.engine.TimerSnapshot
+import app.worn.domain.engine.PeriodReport
+import app.worn.domain.engine.ReportCalculator
+import app.worn.domain.engine.ReportGrain
+import app.worn.domain.engine.TreatmentPlanCalculator
+import app.worn.domain.engine.TreatmentSchedule
 import app.worn.domain.engine.WearCalculator
 import app.worn.domain.model.ActivityType
 import app.worn.domain.model.AlignerSet
@@ -54,6 +59,10 @@ data class TodayUiState(
     val sevenDayAverageMillis: Long = 0L,
     val alignerSets: List<AlignerSet> = emptyList(),
     val hasHistory: Boolean = false,
+    val treatment: TreatmentSchedule? = null,
+    val sessions: List<TrackingSession> = emptyList(),
+    val report: PeriodReport? = null,
+    val reportGrain: ReportGrain = ReportGrain.MONTH,
 )
 
 data class HistoryRow(
@@ -68,13 +77,20 @@ class WornViewModel(
 
     private val selectedDate = MutableStateFlow(LocalDate.now())
     private val now = MutableStateFlow(clock.nowMillis())
+    private val reportGrain = MutableStateFlow(ReportGrain.MONTH)
+    private val reportAnchor = MutableStateFlow(LocalDate.now())
+    private val _openTreatment = MutableStateFlow(false)
+    val openTreatment: StateFlow<Boolean> = _openTreatment
+    private val _startNewSet = MutableStateFlow(false)
+    val startNewSet: StateFlow<Boolean> = _startNewSet
 
     val uiState: StateFlow<TodayUiState> = combine(
-        repository.snapshot,
-        selectedDate,
-        now,
-    ) { snapshot, date, nowMillis ->
-        buildState(snapshot, date, nowMillis)
+        combine(repository.snapshot, selectedDate, now) { a, b, c -> Triple(a, b, c) },
+        reportGrain,
+        reportAnchor,
+    ) { triple, grain, anchor ->
+        val (snapshot, date, nowMillis) = triple
+        buildState(snapshot, date, nowMillis, grain, anchor)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayUiState())
 
     init {
@@ -160,8 +176,18 @@ class WornViewModel(
         viewModelScope.launch { repository.deleteCustomActivity(id) }
     }
 
-    fun startNewSet(number: Int, date: LocalDate, notes: String) {
-        viewModelScope.launch { repository.startNewAlignerSet(number, date, notes) }
+    fun startNewSet(number: Int, date: LocalDate, notes: String = "", onResult: (String?) -> Unit = {}) {
+        viewModelScope.launch {
+            onResult(repository.recordAlignerSet(number, date, notes))
+        }
+    }
+
+    fun updateReplacementInterval(days: Int) {
+        viewModelScope.launch { repository.setReplacementIntervalDays(days) }
+    }
+
+    fun setReplacementReminders(enabled: Boolean) {
+        viewModelScope.launch { repository.setReplacementRemindersEnabled(enabled) }
     }
 
     fun editSession(session: TrackingSession, onResult: (Boolean) -> Unit) {
@@ -193,7 +219,44 @@ class WornViewModel(
         viewModelScope.launch { repository.changeOpenActivity(id) }
     }
 
-    private fun buildState(snapshot: AppSnapshot, date: LocalDate, nowMillis: Long): TodayUiState {
+    fun setReportGrain(grain: ReportGrain) {
+        reportGrain.value = grain
+        reportAnchor.value = LocalDate.now()
+    }
+
+    fun shiftReport(delta: Long) {
+        val next = ReportCalculator.shift(
+            ReportCalculator.window(reportGrain.value, reportAnchor.value),
+            delta,
+        )
+        val today = LocalDate.now()
+        if (next.start.isAfter(today)) return
+        reportAnchor.value = next.start
+    }
+
+    fun requestTreatmentTab() {
+        _openTreatment.value = true
+    }
+
+    fun consumeTreatmentTab() {
+        _openTreatment.value = false
+    }
+
+    fun requestStartNewSet() {
+        _startNewSet.value = true
+    }
+
+    fun consumeStartNewSet() {
+        _startNewSet.value = false
+    }
+
+    private fun buildState(
+        snapshot: AppSnapshot,
+        date: LocalDate,
+        nowMillis: Long,
+        grain: ReportGrain,
+        anchor: LocalDate,
+    ): TodayUiState {
         val zone = ZoneId.of(snapshot.settings.currentZoneId)
         val today = LocalDate.now(zone)
         val record = snapshot.recordFor(date, zone, snapshot.settings.dailyWearTargetMinutes)
@@ -223,6 +286,11 @@ class WornViewModel(
         }
         val last7 = (0..6).map { rowFor(today.minusDays(it.toLong())) }
         val history = thisWeek + earlier
+        val treatment = TreatmentPlanCalculator.schedule(
+            snapshot.alignerSets,
+            snapshot.settings.replacementIntervalDays,
+            today,
+        )
         return TodayUiState(
             ready = true,
             onboardingComplete = snapshot.settings.onboardingComplete,
@@ -235,7 +303,7 @@ class WornViewModel(
             wearing = wearing,
             openSession = snapshot.openSession,
             timer = timer,
-            currentAligner = snapshot.currentAligner,
+            currentAligner = treatment.current?.set ?: snapshot.currentAligner,
             streak = WearCalculator.streak(last7.map { it.totals }, today),
             nowMillis = nowMillis,
             historyDays = history,
@@ -245,6 +313,18 @@ class WornViewModel(
             sevenDayAverageMillis = WearCalculator.averageWornMillis(last7.map { it.totals }),
             alignerSets = snapshot.alignerSets,
             hasHistory = snapshot.sessions.isNotEmpty(),
+            treatment = treatment,
+            sessions = snapshot.sessions,
+            report = ReportCalculator.report(
+                grain = grain,
+                anchor = anchor,
+                today = today,
+                nowMillis = nowMillis,
+                sessions = snapshot.sessions,
+                recordFor = { d -> snapshot.recordFor(d, zone, snapshot.settings.dailyWearTargetMinutes) },
+                activities = snapshot.activities,
+            ),
+            reportGrain = grain,
         )
     }
 

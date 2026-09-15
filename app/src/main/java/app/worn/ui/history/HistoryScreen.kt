@@ -37,7 +37,7 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 @Composable
-fun HistoryScreen(state: TodayUiState, onOpenDay: (LocalDate) -> Unit) {
+fun HistoryScreen(state: TodayUiState, onOpenDay: (LocalDate) -> Unit, onReports: () -> Unit) {
     val colors = WornTheme.colors
     if (!state.hasHistory) {
         Column(
@@ -46,7 +46,14 @@ fun HistoryScreen(state: TodayUiState, onOpenDay: (LocalDate) -> Unit) {
                 .padding(horizontal = 28.dp, vertical = 20.dp),
         ) {
             Text("History", color = colors.text, fontSize = 32.sp, fontWeight = FontWeight.Light)
-            Spacer(Modifier.height(48.dp))
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Reports",
+                color = colors.secondary,
+                fontSize = 15.sp,
+                modifier = Modifier.defaultMinSize(minHeight = 44.dp).clickable(onClick = onReports).padding(vertical = 8.dp),
+            )
+            Spacer(Modifier.height(40.dp))
             Text("No history yet", color = colors.text, fontSize = 20.sp, fontWeight = FontWeight.Light)
             Spacer(Modifier.height(8.dp))
             Text("Your daily wear history will appear here.", color = colors.secondary, fontSize = 15.sp)
@@ -62,7 +69,14 @@ fun HistoryScreen(state: TodayUiState, onOpenDay: (LocalDate) -> Unit) {
         item {
             Spacer(Modifier.height(16.dp))
             Text("History", color = colors.text, fontSize = 32.sp, fontWeight = FontWeight.Light)
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Reports",
+                color = colors.secondary,
+                fontSize = 15.sp,
+                modifier = Modifier.defaultMinSize(minHeight = 44.dp).clickable(onClick = onReports).padding(vertical = 8.dp),
+            )
+            Spacer(Modifier.height(20.dp))
             SectionLabel("This week")
             Spacer(Modifier.height(14.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

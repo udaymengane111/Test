@@ -34,7 +34,14 @@ object DurationFormat {
     }
 
     fun percent(progress: Float): String {
-        val pct = (progress * 100f).toInt().coerceAtLeast(0)
+        val clamped = progress.coerceAtLeast(0f)
+        if (clamped < 0.01f) return "<1%"
+        val pct = (clamped * 100f).toInt()
         return "$pct%"
+    }
+
+    fun percentPrecise(progress: Float): String {
+        val clamped = progress.coerceAtLeast(0f) * 100f
+        return "%.1f%%".format(clamped)
     }
 }

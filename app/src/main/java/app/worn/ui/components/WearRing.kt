@@ -85,11 +85,11 @@ fun WearRing(
                 textAlign = TextAlign.Center,
             )
             Text(
-                text = if (targetReached) "Target reached" else "WORN",
+                text = if (targetReached) "Target reached" else "worn today",
                 color = if (targetReached) colors.accent else colors.secondary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
-                letterSpacing = 2.4.sp,
+                letterSpacing = 0.8.sp,
             )
         }
     }

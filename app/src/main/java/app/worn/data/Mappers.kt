@@ -17,6 +17,8 @@ fun SettingsEntity.toModel() = UserSettings(
     dailyWearTargetMinutes = dailyWearTargetMinutes,
     onboardingComplete = onboardingComplete,
     notificationsEnabled = notificationsEnabled,
+    replacementRemindersEnabled = replacementRemindersEnabled,
+    replacementIntervalDays = replacementIntervalDays,
     currentZoneId = currentZoneId,
 )
 

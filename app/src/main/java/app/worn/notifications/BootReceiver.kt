@@ -29,6 +29,7 @@ class BootReceiver : BroadcastReceiver() {
                     WornNotifications.scheduleExpiry(context, open)
                     RemovalTimerService.sync(context)
                 }
+                ReplacementReminders.syncNow(context)
             } finally {
                 pending.finish()
             }

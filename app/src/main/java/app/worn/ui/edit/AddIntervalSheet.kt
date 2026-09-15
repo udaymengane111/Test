@@ -1,7 +1,9 @@
 package app.worn.ui.edit
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -21,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import app.worn.domain.model.ActivityType
 import app.worn.domain.model.DefaultActivities
 import app.worn.domain.model.SessionKind
+import app.worn.ui.components.PastOrTodayDatePicker
 import app.worn.ui.theme.WornTheme
 import java.time.LocalDate
 import java.time.LocalTime
@@ -37,15 +40,29 @@ fun AddIntervalSheet(
     onAdd: (SessionKind, Long, Long, String?) -> Unit,
 ) {
     val colors = WornTheme.colors
+    val today = LocalDate.now(zone)
+    var selectedDate by remember { mutableStateOf(date) }
+    var showDate by remember { mutableStateOf(false) }
     var kindWear by remember { mutableStateOf(true) }
     var startText by remember { mutableStateOf("12:00") }
     var endText by remember { mutableStateOf("12:30") }
     var activityId by remember { mutableStateOf(DefaultActivities.OTHER) }
+    val dateFmt = DateTimeFormatter.ofPattern("d MMM yyyy")
 
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = colors.background) {
         Column(Modifier.padding(24.dp).padding(bottom = 24.dp)) {
             Text("Add missing interval", color = colors.text, fontSize = 20.sp)
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
+            Text(
+                selectedDate.format(dateFmt),
+                color = colors.secondary,
+                fontSize = 14.sp,
+                modifier = Modifier
+                    .defaultMinSize(minHeight = 44.dp)
+                    .clickable { showDate = true }
+                    .padding(vertical = 8.dp),
+            )
+            Spacer(Modifier.height(4.dp))
             TextButton(onClick = { kindWear = true }) {
                 Text("Worn", color = if (kindWear) colors.accent else colors.secondary)
             }
@@ -63,12 +80,23 @@ fun AddIntervalSheet(
                 }
             }
             TextButton(onClick = {
-                val start = parse(startText, date, zone) ?: return@TextButton
-                val end = parse(endText, date, zone) ?: return@TextButton
+                val start = parse(startText, selectedDate, zone) ?: return@TextButton
+                val end = parse(endText, selectedDate, zone) ?: return@TextButton
                 if (end <= start) return@TextButton
                 onAdd(if (kindWear) SessionKind.WEAR else SessionKind.REMOVAL, start, end, if (kindWear) null else activityId)
             }) { Text("Add") }
         }
+    }
+    if (showDate) {
+        PastOrTodayDatePicker(
+            selected = selectedDate,
+            today = today,
+            onDismiss = { showDate = false },
+            onConfirm = {
+                selectedDate = it
+                showDate = false
+            },
+        )
     }
 }
 

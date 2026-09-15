@@ -10,6 +10,8 @@ data class SettingsEntity(
     val dailyWearTargetMinutes: Int,
     val onboardingComplete: Boolean,
     val notificationsEnabled: Boolean,
+    val replacementRemindersEnabled: Boolean = true,
+    val replacementIntervalDays: Int = 10,
     val currentZoneId: String,
 )
 

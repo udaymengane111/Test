@@ -1,8 +1,10 @@
 package app.worn.ui.treatment
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,13 +25,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.BasicTextField
+import app.worn.notifications.ReplacementReminders
 import app.worn.ui.TodayUiState
 import app.worn.ui.WornViewModel
+import app.worn.ui.components.PastOrTodayDatePicker
 import app.worn.ui.components.PrimaryButton
 import app.worn.ui.components.SectionLabel
 import app.worn.ui.theme.WornTheme
@@ -37,14 +42,34 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun TreatmentScreen(state: TodayUiState, vm: WornViewModel, onSettings: () -> Unit) {
+fun TreatmentScreen(
+    state: TodayUiState,
+    vm: WornViewModel,
+    onSettings: () -> Unit,
+    startNewRequested: Boolean = false,
+    onStartNewConsumed: () -> Unit = {},
+) {
     val colors = WornTheme.colors
+    val context = LocalContext.current
+    val today = LocalDate.now()
+    val schedule = state.treatment
+    val current = schedule?.current
+    val nextNumber = schedule?.expectedNextSetNumber ?: 1
     var showNew by remember { mutableStateOf(false) }
-    val current = state.currentAligner
-    val nextNumber = (current?.setNumber ?: state.alignerSets.maxOfOrNull { it.setNumber } ?: 0) + 1
+    androidx.compose.runtime.LaunchedEffect(startNewRequested) {
+        if (startNewRequested) {
+            showNew = true
+            onStartNewConsumed()
+        }
+    }
     var number by remember(showNew, nextNumber, current == null) {
         mutableStateOf((if (current == null) 1 else nextNumber).toString())
     }
+    var startDate by remember(showNew) { mutableStateOf(today) }
+    var showPicker by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val fmt = DateTimeFormatter.ofPattern("d MMM yyyy")
+    val shortFmt = DateTimeFormatter.ofPattern("d MMM")
 
     Column(
         Modifier
@@ -62,22 +87,42 @@ fun TreatmentScreen(state: TodayUiState, vm: WornViewModel, onSettings: () -> Un
         SectionLabel("Current aligner")
         Spacer(Modifier.height(12.dp))
         if (current != null) {
-            Text("Set ${current.setNumber}", color = colors.text, fontSize = 44.sp, fontWeight = FontWeight.Light)
+            Text("Set ${current.set.setNumber}", color = colors.text, fontSize = 44.sp, fontWeight = FontWeight.Light)
             Spacer(Modifier.height(8.dp))
             Text("Started", color = colors.tertiary, fontSize = 13.sp)
-            Text(
-                current.startDate.format(DateTimeFormatter.ofPattern("d MMM yyyy")),
-                color = colors.secondary,
-                fontSize = 16.sp,
-            )
+            Text(current.start.format(fmt), color = colors.secondary, fontSize = 16.sp)
+            Spacer(Modifier.height(16.dp))
+            if (schedule?.isOverdue == true) {
+                Text("OVERDUE", color = colors.warning, fontSize = 11.sp, letterSpacing = 1.6.sp, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.height(6.dp))
+                Text("Set ${schedule.expectedNextSetNumber}", color = colors.text, fontSize = 22.sp, fontWeight = FontWeight.Light)
+                Text(
+                    "Due ${schedule.expectedNextDate?.format(shortFmt)}",
+                    color = colors.secondary,
+                    fontSize = 15.sp,
+                )
+                Text(
+                    "${schedule.overdueDays} day${if (schedule.overdueDays == 1L) "" else "s"} overdue",
+                    color = colors.warning,
+                    fontSize = 14.sp,
+                )
+            } else {
+                Text("Next replacement", color = colors.tertiary, fontSize = 13.sp)
+                Text(
+                    schedule?.expectedNextDate?.format(fmt) ?: "—",
+                    color = colors.secondary,
+                    fontSize = 16.sp,
+                )
+            }
         } else {
             Text("No aligner recorded", color = colors.text, fontSize = 20.sp, fontWeight = FontWeight.Light)
             Spacer(Modifier.height(8.dp))
-            Text("Add the set you’re wearing now.", color = colors.secondary, fontSize = 15.sp)
+            Text("Add the set you’re wearing now. You can use the real start date, even if it was in the past.", color = colors.secondary, fontSize = 15.sp)
         }
         Spacer(Modifier.height(32.dp))
         if (!showNew) {
             PrimaryButton(if (current == null) "ADD CURRENT ALIGNER" else "START NEW ALIGNER") {
+                error = null
                 showNew = true
             }
         } else {
@@ -94,37 +139,68 @@ fun TreatmentScreen(state: TodayUiState, vm: WornViewModel, onSettings: () -> Un
             )
             Text("Start date", color = colors.tertiary, fontSize = 13.sp)
             Spacer(Modifier.height(4.dp))
-            Text("Today", color = colors.text, fontSize = 17.sp)
+            Text(
+                startDate.format(fmt),
+                color = colors.text,
+                fontSize = 17.sp,
+                modifier = Modifier
+                    .defaultMinSize(minHeight = 44.dp)
+                    .clickable { showPicker = true }
+                    .padding(vertical = 10.dp),
+            )
+            Text("Change date", color = colors.secondary, fontSize = 13.sp, modifier = Modifier.clickable { showPicker = true })
+            error?.let {
+                Spacer(Modifier.height(12.dp))
+                Text(it, color = colors.warning, fontSize = 14.sp)
+            }
             Spacer(Modifier.height(24.dp))
             PrimaryButton("SAVE") {
                 val n = number.toIntOrNull() ?: return@PrimaryButton
-                vm.startNewSet(n, LocalDate.now(), "")
-                showNew = false
+                vm.startNewSet(n, startDate, "") { message ->
+                    if (message == null) {
+                        ReplacementReminders.clearNotice(context)
+                        ReplacementReminders.sync(context)
+                        showNew = false
+                        error = null
+                    } else {
+                        error = message
+                    }
+                }
             }
-            TextButton(onClick = { showNew = false }) { Text("Cancel", color = colors.secondary) }
+            TextButton(onClick = { showNew = false; error = null }) { Text("Cancel", color = colors.secondary) }
         }
-        val history = state.alignerSets.filter { it.id != current?.id }.sortedByDescending { it.setNumber }
+        val history = schedule?.periods.orEmpty().sortedByDescending { it.set.setNumber }
         if (history.isNotEmpty()) {
             Spacer(Modifier.height(40.dp))
             SectionLabel("Aligner history")
             Spacer(Modifier.height(12.dp))
-            history.forEach { set ->
-                val range = if (set.endDate == null) {
-                    set.startDate.format(DateTimeFormatter.ofPattern("d MMM")) + " →"
+            history.forEach { period ->
+                val range = if (period.endInclusive == null) {
+                    period.start.format(shortFmt) + " → Current"
                 } else {
-                    set.startDate.format(DateTimeFormatter.ofPattern("d MMM")) +
-                        " → " + set.endDate.format(DateTimeFormatter.ofPattern("d MMM"))
+                    period.start.format(shortFmt) + " → " + period.endInclusive.format(shortFmt)
                 }
                 Row(
                     Modifier
                         .fillMaxWidth()
                         .padding(vertical = 14.dp),
                 ) {
-                    Text("Set ${set.setNumber}", color = colors.text, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                    Text("Set ${period.set.setNumber}", color = colors.text, fontSize = 16.sp, modifier = Modifier.weight(1f))
                     Text(range, color = colors.secondary, fontSize = 15.sp)
                 }
             }
         }
         Spacer(Modifier.height(40.dp))
+    }
+    if (showPicker) {
+        PastOrTodayDatePicker(
+            selected = startDate,
+            today = today,
+            onDismiss = { showPicker = false },
+            onConfirm = {
+                startDate = it
+                showPicker = false
+            },
+        )
     }
 }

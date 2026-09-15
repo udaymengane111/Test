@@ -264,25 +264,51 @@ class TrackingRepository(
         db.activities().deleteCustom(id)
     }
 
-    suspend fun startNewAlignerSet(setNumber: Int, startDate: LocalDate, notes: String = "") {
-        val current = db.aligners().getCurrent()?.toModel()
-        if (current != null) {
-            val end = if (startDate.isAfter(current.startDate)) {
-                startDate.minusDays(1)
-            } else {
-                startDate
-            }
-            db.aligners().upsert(current.copy(endDate = end).toEntity())
-        }
+    suspend fun setReplacementIntervalDays(days: Int) {
+        val current = db.settings().get() ?: return
+        db.settings().upsert(current.copy(replacementIntervalDays = days.coerceIn(1, 90)))
+    }
+
+    suspend fun setReplacementRemindersEnabled(enabled: Boolean) {
+        val current = db.settings().get() ?: return
+        db.settings().upsert(current.copy(replacementRemindersEnabled = enabled))
+    }
+
+    /**
+     * Records an aligner set with an actual start date (today or historical).
+     * Returns a user-facing error, or null on success.
+     */
+    suspend fun recordAlignerSet(setNumber: Int, startDate: LocalDate, notes: String = ""): String? {
+        val today = LocalDate.now(zoneProvider())
+        val existing = db.aligners().getAll().map { it.toModel() }
+        val error = app.worn.domain.engine.TreatmentPlanCalculator.validateNewSet(
+            existing,
+            setNumber,
+            startDate,
+            today,
+        )
+        if (error != null) return error
+        val prior = existing.firstOrNull { it.setNumber == setNumber }
         db.aligners().upsert(
             AlignerSet(
-                id = UUID.randomUUID().toString(),
+                id = prior?.id ?: UUID.randomUUID().toString(),
                 setNumber = setNumber,
                 startDate = startDate,
                 endDate = null,
                 notes = notes,
             ).toEntity(),
         )
+        reconcileAlignerEndDates()
+        return null
+    }
+
+    suspend fun reconcileAlignerEndDates() {
+        val periods = app.worn.domain.engine.TreatmentPlanCalculator.derivePeriods(
+            db.aligners().getAll().map { it.toModel() },
+        )
+        periods.forEach { period ->
+            db.aligners().upsert(period.set.toEntity())
+        }
     }
 
     suspend fun updateAlignerSet(set: AlignerSet) {
@@ -293,6 +319,7 @@ class TrackingRepository(
         val all = db.sessions().getAll().map { it.toModel() }
         val next = SessionEditor.replace(all, updated)
         if (!SessionEditor.validateNoOverlap(next)) return false
+        ensureRecordsFor(updated)
         db.sessions().upsert(updated.toEntity())
         return true
     }
@@ -300,8 +327,15 @@ class TrackingRepository(
     suspend fun addSession(session: TrackingSession): Boolean {
         val all = db.sessions().getAll().map { it.toModel() } + session
         if (!SessionEditor.validateNoOverlap(all)) return false
+        ensureRecordsFor(session)
         db.sessions().upsert(session.toEntity())
         return true
+    }
+
+    private suspend fun ensureRecordsFor(session: TrackingSession) {
+        val zone = zoneProvider()
+        ensureDailyRecord(session.startMillis.toLocalDate(zone))
+        session.endMillis?.let { ensureDailyRecord(it.toLocalDate(zone)) }
     }
 
     suspend fun deleteSession(id: String) {
@@ -314,12 +348,14 @@ class TrackingRepository(
 
     suspend fun openSession(): TrackingSession? = db.sessions().getOpen()?.toModel()
 
-    suspend fun allSessions(): List<TrackingSession> = db.sessions().getAll().map { it.toModel() }
+    suspend fun alignerSets() = db.aligners().getAll().map { it.toModel() }
 
     private fun defaultSettings() = UserSettings(
         dailyWearTargetMinutes = 22 * 60,
         onboardingComplete = false,
         notificationsEnabled = false,
+        replacementRemindersEnabled = true,
+        replacementIntervalDays = 10,
         currentZoneId = zoneProvider().id,
     )
 }

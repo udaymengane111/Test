@@ -32,6 +32,8 @@ class TimerActionReceiver : BroadcastReceiver() {
                         NotificationManagerCompat.from(context).cancel(WornNotifications.ID_TIMER_DONE)
                         RemovalTimerService.sync(context)
                     }
+                    ReplacementReminders.ACTION_DUE -> ReplacementReminders.onDue(context)
+                    ReplacementReminders.ACTION_SNOOZE -> ReplacementReminders.snoozeOneDay(context)
                     WornNotifications.ACTION_TIMER_ALARM -> {
                         val open = app.repository.openSession() ?: return@launch
                         if (open.kind != SessionKind.REMOVAL) return@launch
