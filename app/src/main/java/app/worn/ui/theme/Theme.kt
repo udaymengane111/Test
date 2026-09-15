@@ -37,7 +37,7 @@ val LightWornColors = WornColors(
     accent = Color(0xFF5E8E8A),
     wearing = Color(0xFF3E8B7A),
     removed = Color(0xFFC4A574),
-    warning = Color(0xFFC45C4A),
+    warning = Color(0xFFB0894A),
     ringTrack = Color(0xFFE6E4DE),
     hairline = Color(0x1A1C1C1A),
 )
@@ -51,7 +51,7 @@ val DarkWornColors = WornColors(
     accent = Color(0xFF7AAEA8),
     wearing = Color(0xFF62C2AE),
     removed = Color(0xFFD4B48A),
-    warning = Color(0xFFE07A6C),
+    warning = Color(0xFFC4A574),
     ringTrack = Color(0xFF2A2A27),
     hairline = Color(0x22F3F2EE),
 )

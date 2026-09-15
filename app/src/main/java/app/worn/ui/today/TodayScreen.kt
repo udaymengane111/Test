@@ -13,10 +13,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,7 +26,6 @@ import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -36,6 +37,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,13 +49,18 @@ import app.worn.service.RemovalTimerService
 import app.worn.ui.TodayUiState
 import app.worn.ui.WornViewModel
 import app.worn.ui.components.DayMetrics
+import app.worn.ui.components.Hairline
 import app.worn.ui.components.PrimaryButton
-import app.worn.ui.components.StatusDot
+import app.worn.ui.components.SectionLabel
+import app.worn.ui.components.TextAction
 import app.worn.ui.components.TimelineList
 import app.worn.ui.components.WearRing
+import app.worn.ui.components.WearingStatus
+import app.worn.ui.components.activityIcon
 import app.worn.ui.edit.AddIntervalSheet
 import app.worn.ui.edit.EditSegmentSheet
 import app.worn.ui.theme.WornTheme
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -68,143 +77,183 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
         vm.setNotifications(granted)
     }
     val zone = ZoneId.of(state.settings?.currentZoneId ?: ZoneId.systemDefault().id)
-    val dateLabel = if (state.isToday) "Today" else state.selectedDate.format(DateTimeFormatter.ofPattern("EEE, d MMM"))
     val headerDate = state.selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMM d"))
+    val today = LocalDate.now(zone)
 
     Column(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 12.dp),
+            .padding(horizontal = 28.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { vm.shiftDay(-1) }) {
-                Icon(Icons.Outlined.ChevronLeft, contentDescription = "Previous day", tint = colors.secondary)
-            }
-            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
                 Text(
-                    dateLabel.uppercase(),
+                    if (state.isToday) "Today" else state.selectedDate.format(DateTimeFormatter.ofPattern("EEE d MMM")),
                     color = colors.text,
-                    fontSize = 13.sp,
-                    letterSpacing = 2.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Light,
                     modifier = Modifier.clickable { vm.goToday() },
                 )
                 Text(headerDate, color = colors.secondary, fontSize = 13.sp)
             }
-            IconButton(onClick = { vm.shiftDay(1) }) {
-                Icon(Icons.Outlined.ChevronRight, contentDescription = "Next day", tint = colors.secondary)
+            Column(horizontalAlignment = Alignment.End) {
+                state.currentAligner?.let { set ->
+                    Text("Aligner ${set.setNumber}", color = colors.secondary, fontSize = 14.sp)
+                    Text(
+                        set.startDate.format(DateTimeFormatter.ofPattern("d MMM")),
+                        color = colors.tertiary,
+                        fontSize = 12.sp,
+                    )
+                }
             }
         }
 
-        state.currentAligner?.let { set ->
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Aligner ${set.setNumber}",
-                color = colors.tertiary,
-                fontSize = 13.sp,
+        Row(
+            Modifier.fillMaxWidth().padding(top = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Outlined.ChevronLeft,
+                contentDescription = "Previous day",
+                tint = colors.tertiary,
+                modifier = Modifier
+                    .size(44.dp)
+                    .semantics { role = Role.Button }
+                    .clickable { vm.shiftDay(-1) }
+                    .padding(10.dp),
             )
-            Text(
-                "Started ${set.startDate.format(DateTimeFormatter.ofPattern("d MMM"))}",
-                color = colors.tertiary,
-                fontSize = 12.sp,
+            Icon(
+                Icons.Outlined.ChevronRight,
+                contentDescription = "Next day",
+                tint = if (state.selectedDate < today) colors.tertiary else colors.ringTrack,
+                modifier = Modifier
+                    .size(44.dp)
+                    .semantics { role = Role.Button }
+                    .clickable(enabled = state.selectedDate < today) { vm.shiftDay(1) }
+                    .padding(10.dp),
             )
         }
 
-        Spacer(Modifier.height(20.dp))
         WearRing(
             wornMillis = totals.wornMillis,
             targetMillis = totals.targetMillis,
             wearing = state.wearing,
             targetReached = totals.targetReached,
         )
-        Spacer(Modifier.height(8.dp))
         Text(
-            DurationFormat.hoursMinutes(totals.targetMillis) + " target",
-            color = colors.secondary,
-            fontSize = 15.sp,
+            if (totals.targetReached) DurationFormat.hoursMinutes(totals.targetMillis) + " target"
+            else DurationFormat.percent(totals.progress.coerceAtMost(1f)),
+            color = colors.tertiary,
+            fontSize = 13.sp,
         )
-        if (totals.targetReached && state.isToday) {
-            Spacer(Modifier.height(6.dp))
-            Text("That’s the day.", color = colors.accent, fontSize = 14.sp)
+        if (!totals.targetReached) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                DurationFormat.hoursMinutes(totals.targetMillis) + " target",
+                color = colors.secondary,
+                fontSize = 15.sp,
+            )
         }
+
         Spacer(Modifier.height(28.dp))
+        Hairline()
+        Spacer(Modifier.height(22.dp))
         DayMetrics(totals.wornMillis, totals.remainingMillis, totals.notWornMillis, totals.targetReached)
-        if (state.streak >= 2 && state.isToday) {
-            Spacer(Modifier.height(14.dp))
-            Text("${state.streak} days on target", color = colors.tertiary, fontSize = 13.sp)
-        }
 
         Spacer(Modifier.height(32.dp))
         AnimatedContent(
-            targetState = state.wearing to state.timer,
+            targetState = Triple(state.wearing, state.timer?.paused, state.timer?.overdue),
             transitionSpec = { fadeIn() togetherWith fadeOut() },
             label = "status",
-        ) { (wearing, timer) ->
+        ) { (wearing, paused, overdue) ->
+            val timer = state.timer
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                if (wearing) {
-                    StatusDot(true, "Wearing aligner")
+                WearingStatus(wearing)
+                if (!wearing && timer != null) {
+                    val activityName = state.activities.firstOrNull { it.id == state.openSession?.activityTypeId }?.name ?: "Activity"
                     Spacer(Modifier.height(20.dp))
-                    if (state.isToday) {
+                    Text(activityName, color = colors.text, fontSize = 18.sp)
+                    Spacer(Modifier.height(6.dp))
+                    when {
+                        paused == true -> {
+                            Text("Paused", color = colors.tertiary, fontSize = 13.sp, letterSpacing = 1.2.sp)
+                            Text(
+                                DurationFormat.timer(timer.remainingMillis.coerceAtLeast(0)),
+                                color = colors.text,
+                                fontSize = 40.sp,
+                                fontWeight = FontWeight.Light,
+                            )
+                            Text("remaining", color = colors.secondary, fontSize = 15.sp)
+                        }
+                        overdue == true -> {
+                            Text("Time’s up", color = colors.warning, fontSize = 13.sp, letterSpacing = 1.2.sp)
+                            Text(
+                                DurationFormat.timer(timer.overdueMillis),
+                                color = colors.text,
+                                fontSize = 40.sp,
+                                fontWeight = FontWeight.Light,
+                            )
+                            Text("over", color = colors.secondary, fontSize = 15.sp)
+                        }
+                        else -> {
+                            Text(
+                                DurationFormat.timer(timer.remainingMillis),
+                                color = colors.text,
+                                fontSize = 40.sp,
+                                fontWeight = FontWeight.Light,
+                            )
+                            Text("remaining", color = colors.secondary, fontSize = 15.sp)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
+                if (state.isToday) {
+                    if (wearing) {
                         PrimaryButton("REMOVE ALIGNER", onClick = {
                             if (Build.VERSION.SDK_INT >= 33 && state.settings?.notificationsEnabled != true) {
                                 permission.launch(Manifest.permission.POST_NOTIFICATIONS)
                             }
                             showActivities = true
                         })
-                    }
-                } else {
-                    StatusDot(false, "Aligner removed")
-                    val activityName = state.activities.firstOrNull { it.id == state.openSession?.activityTypeId }?.name ?: "Activity"
-                    Spacer(Modifier.height(12.dp))
-                    if (timer != null) {
-                        Text(activityName, color = colors.text, fontSize = 20.sp, fontWeight = FontWeight.Medium)
-                        Spacer(Modifier.height(4.dp))
-                        val timeText = when {
-                            timer.paused -> "${DurationFormat.timer(timer.remainingMillis.coerceAtLeast(0))} paused"
-                            timer.overdue -> "${DurationFormat.timer(timer.overdueMillis)} over"
-                            else -> "${DurationFormat.timer(timer.remainingMillis)} remaining"
-                        }
-                        Text(
-                            timeText,
-                            color = if (timer.overdue && !timer.paused) colors.warning else colors.secondary,
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.Light,
-                        )
-                    }
-                    Spacer(Modifier.height(20.dp))
-                    if (state.isToday) {
+                    } else {
                         PrimaryButton("PUT ALIGNER BACK", onClick = {
                             vm.putBack { RemovalTimerService.sync(context) }
                         })
-                        Spacer(Modifier.height(10.dp))
-                        PrimaryButton(
-                            text = if (timer?.paused == true) "RESUME" else "PAUSE",
-                            onClick = {
-                                if (timer?.paused == true) {
-                                    vm.resume { RemovalTimerService.sync(context) }
-                                } else {
-                                    vm.pause { RemovalTimerService.sync(context) }
-                                }
-                            },
-                            subtle = true,
-                        )
+                        TextAction(if (paused == true) "Resume" else "Pause") {
+                            if (paused == true) vm.resume { RemovalTimerService.sync(context) }
+                            else vm.pause { RemovalTimerService.sync(context) }
+                        }
                     }
                 }
             }
         }
 
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.height(36.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("TIMELINE", color = colors.tertiary, fontSize = 11.sp, letterSpacing = 1.8.sp)
-            Text("Add", color = colors.secondary, fontSize = 13.sp, modifier = Modifier.clickable { adding = true })
+            SectionLabel("Timeline")
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(
+                    "Add",
+                    color = colors.secondary,
+                    fontSize = 13.sp,
+                    modifier = Modifier
+                        .defaultMinSize(minHeight = 44.dp)
+                        .clickable { adding = true }
+                        .padding(top = 12.dp),
+                )
+            }
         }
-        if (state.segments.isNotEmpty()) {
+        if (state.segments.isEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            Text("Intervals you wear and remove will appear here.", color = colors.tertiary, fontSize = 14.sp)
+        } else {
             Spacer(Modifier.height(16.dp))
             TimelineList(state.segments, state.activities, zone, state.nowMillis) { editing = it }
         }
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(36.dp))
     }
 
     if (showActivities) {
@@ -213,22 +262,34 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             containerColor = colors.background,
         ) {
-            Column(Modifier.padding(horizontal = 24.dp, vertical = 8.dp).padding(bottom = 36.dp)) {
-                Text("Why are you taking it out?", color = colors.text, fontSize = 20.sp, fontWeight = FontWeight.Medium)
-                Spacer(Modifier.height(20.dp))
+            Column(Modifier.padding(horizontal = 28.dp).padding(bottom = 40.dp)) {
+                Text("Why are you taking it out?", color = colors.text, fontSize = 22.sp, fontWeight = FontWeight.Light)
+                Spacer(Modifier.height(8.dp))
                 state.activities.forEach { activity ->
                     Row(
                         Modifier
                             .fillMaxWidth()
+                            .defaultMinSize(minHeight = 56.dp)
                             .clickable {
                                 vm.removeAligner(activity.id) { RemovalTimerService.sync(context) }
                                 showActivities = false
                             }
-                            .padding(vertical = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                            .padding(vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(activity.name, color = colors.text, fontSize = 17.sp)
-                        Text("${activity.defaultDurationMinutes} min", color = colors.secondary, fontSize = 15.sp)
+                        Icon(
+                            activityIcon(activity.iconKey, activity.id),
+                            contentDescription = null,
+                            tint = colors.secondary,
+                            modifier = Modifier.size(22.dp),
+                        )
+                        Text(
+                            activity.name,
+                            color = colors.text,
+                            fontSize = 17.sp,
+                            modifier = Modifier.padding(start = 16.dp).weight(1f),
+                        )
+                        Text("${activity.defaultDurationMinutes} min", color = colors.tertiary, fontSize = 14.sp)
                     }
                 }
             }
@@ -240,9 +301,7 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
             activities = state.activities,
             zone = zone,
             onDismiss = { editing = null },
-            onSave = { session ->
-                vm.editSession(session) { editing = null }
-            },
+            onSave = { session -> vm.editSession(session) { editing = null } },
             onDelete = {
                 vm.deleteSession(segment.session.id)
                 editing = null

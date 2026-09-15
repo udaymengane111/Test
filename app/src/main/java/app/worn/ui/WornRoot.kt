@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -58,7 +58,7 @@ fun WornRoot(state: TodayUiState, vm: WornViewModel) {
             NavigationBar(containerColor = colors.background, tonalElevation = 0.dp) {
                 NavItem(tab == Tab.Today, "Today", Icons.Outlined.Schedule) { tab = Tab.Today }
                 NavItem(tab == Tab.History, "History", Icons.Outlined.CalendarMonth) { tab = Tab.History }
-                NavItem(tab == Tab.Treatment, "Treatment", Icons.Outlined.FavoriteBorder) { tab = Tab.Treatment }
+                NavItem(tab == Tab.Treatment, "Treatment", Icons.Outlined.Layers) { tab = Tab.Treatment }
             }
         },
     ) { padding ->

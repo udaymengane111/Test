@@ -25,8 +25,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.TemporalAdjusters
 import java.util.UUID
 
 data class TodayUiState(
@@ -45,9 +48,12 @@ data class TodayUiState(
     val streak: Int = 0,
     val nowMillis: Long = 0L,
     val historyDays: List<HistoryRow> = emptyList(),
+    val thisWeek: List<HistoryRow> = emptyList(),
+    val earlierDays: List<HistoryRow> = emptyList(),
     val weekHits: List<Boolean> = emptyList(),
     val sevenDayAverageMillis: Long = 0L,
     val alignerSets: List<AlignerSet> = emptyList(),
+    val hasHistory: Boolean = false,
 )
 
 data class HistoryRow(
@@ -86,7 +92,10 @@ class WornViewModel(
     }
 
     fun shiftDay(delta: Int) {
-        selectedDate.value = selectedDate.value.plusDays(delta.toLong())
+        val zone = ZoneId.systemDefault()
+        val next = selectedDate.value.plusDays(delta.toLong())
+        if (next.isAfter(LocalDate.now(zone))) return
+        selectedDate.value = next
     }
 
     fun goToday() {
@@ -195,22 +204,25 @@ class WornViewModel(
             ?.takeIf { it.kind == SessionKind.REMOVAL }
             ?.let { ActivityTimerCalculator.snapshot(it, nowMillis) }
 
-        val historyStart = today.minusDays(21)
-        val history = generateSequence(today) { it.minusDays(1) }
-            .takeWhile { it >= historyStart }
-            .map { d ->
-                val rec = snapshot.recordFor(d, zone, snapshot.settings.dailyWearTargetMinutes)
-                HistoryRow(d, WearCalculator.totals(snapshot.sessions, rec, nowMillis))
-            }
-            .toList()
-
-        val week = (6 downTo 0).map { offset ->
-            val d = today.minusDays(offset.toLong())
+        val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        fun rowFor(d: LocalDate): HistoryRow {
             val rec = snapshot.recordFor(d, zone, snapshot.settings.dailyWearTargetMinutes)
-            WearCalculator.totals(snapshot.sessions, rec, nowMillis).targetReached
+            return HistoryRow(d, WearCalculator.totals(snapshot.sessions, rec, nowMillis))
         }
-        val last7 = history.take(7)
-        val streakDays = history.map { it.totals }
+        val thisWeek = (0..6).map { rowFor(monday.plusDays(it.toLong())) }
+        val firstSessionDate = snapshot.sessions.minOfOrNull {
+            Instant.ofEpochMilli(it.startMillis).atZone(zone).toLocalDate()
+        }
+        val earlier = if (firstSessionDate != null && firstSessionDate.isBefore(monday)) {
+            generateSequence(monday.minusDays(1)) { it.minusDays(1) }
+                .takeWhile { !it.isBefore(firstSessionDate) }
+                .map(::rowFor)
+                .toList()
+        } else {
+            emptyList()
+        }
+        val last7 = (0..6).map { rowFor(today.minusDays(it.toLong())) }
+        val history = thisWeek + earlier
         return TodayUiState(
             ready = true,
             onboardingComplete = snapshot.settings.onboardingComplete,
@@ -224,12 +236,15 @@ class WornViewModel(
             openSession = snapshot.openSession,
             timer = timer,
             currentAligner = snapshot.currentAligner,
-            streak = WearCalculator.streak(streakDays, today),
+            streak = WearCalculator.streak(last7.map { it.totals }, today),
             nowMillis = nowMillis,
             historyDays = history,
-            weekHits = week,
+            thisWeek = thisWeek,
+            earlierDays = earlier,
+            weekHits = thisWeek.map { it.totals.targetReached },
             sevenDayAverageMillis = WearCalculator.averageWornMillis(last7.map { it.totals }),
             alignerSets = snapshot.alignerSets,
+            hasHistory = snapshot.sessions.isNotEmpty(),
         )
     }
 
