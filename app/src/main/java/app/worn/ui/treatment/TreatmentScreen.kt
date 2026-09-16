@@ -93,19 +93,22 @@ fun TreatmentScreen(
             Text(current.start.format(fmt), color = colors.secondary, fontSize = 16.sp)
             Spacer(Modifier.height(16.dp))
             if (schedule?.isOverdue == true) {
-                Text("OVERDUE", color = colors.warning, fontSize = 11.sp, letterSpacing = 1.6.sp, fontWeight = FontWeight.Medium)
+                Text("Replacement overdue", color = colors.warning, fontSize = 13.sp, letterSpacing = 1.2.sp)
                 Spacer(Modifier.height(6.dp))
-                Text("Set ${schedule.expectedNextSetNumber}", color = colors.text, fontSize = 22.sp, fontWeight = FontWeight.Light)
+                Text(
+                    "${schedule.overdueDays} day${if (schedule.overdueDays == 1L) "" else "s"}",
+                    color = colors.warning,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Light,
+                )
                 Text(
                     "Due ${schedule.expectedNextDate?.format(shortFmt)}",
                     color = colors.secondary,
                     fontSize = 15.sp,
                 )
-                Text(
-                    "${schedule.overdueDays} day${if (schedule.overdueDays == 1L) "" else "s"} overdue",
-                    color = colors.warning,
-                    fontSize = 14.sp,
-                )
+            } else if (schedule?.dueToday == true) {
+                Text("Next replacement", color = colors.tertiary, fontSize = 13.sp)
+                Text("Today", color = colors.warning, fontSize = 22.sp, fontWeight = FontWeight.Light)
             } else {
                 Text("Next replacement", color = colors.tertiary, fontSize = 13.sp)
                 Text(

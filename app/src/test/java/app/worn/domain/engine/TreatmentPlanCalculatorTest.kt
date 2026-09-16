@@ -203,4 +203,39 @@ class TreatmentPlanCalculatorTest {
         assertThat(TreatmentPlanCalculator.shouldPostNotice(null, today)).isTrue()
         assertThat(TreatmentPlanCalculator.shouldPostNotice(today.minusDays(1), today)).isTrue()
     }
+
+    @Test
+    fun dueTodayIsVisibleWithoutBeingOverdue() {
+        val schedule = TreatmentPlanCalculator.schedule(
+            listOf(set(8, LocalDate.of(2026, 9, 6))),
+            10,
+            LocalDate.of(2026, 9, 16),
+        )
+        assertThat(schedule.dueToday).isTrue()
+        assertThat(schedule.isOverdue).isFalse()
+        assertThat(schedule.daysUntilReplacement).isEqualTo(0)
+    }
+
+    @Test
+    fun snoozeDoesNotChangeTreatmentDueDate() {
+        val due = LocalDate.of(2026, 9, 16)
+        val schedule = TreatmentPlanCalculator.schedule(listOf(set(8, LocalDate.of(2026, 9, 6))), 10, due)
+        val snoozed = TreatmentPlanCalculator.planReminder(
+            sets = listOf(set(8, LocalDate.of(2026, 9, 6))),
+            intervalDays = 10,
+            today = due,
+            zone = zone,
+            enabled = true,
+            snoozeUntil = due.plusDays(1),
+        )
+        assertThat(schedule.expectedNextDate).isEqualTo(due)
+        assertThat(snoozed.reminderDate).isEqualTo(due)
+        assertThat(snoozed.action).isEqualTo(ReminderAction.SCHEDULE)
+        assertThat(snoozed.triggerAtMillis)
+            .isEqualTo(TreatmentPlanCalculator.reminderInstantMillis(due.plusDays(1), zone))
+        val nextDay = TreatmentPlanCalculator.schedule(listOf(set(8, LocalDate.of(2026, 9, 6))), 10, due.plusDays(1))
+        assertThat(nextDay.expectedNextDate).isEqualTo(due)
+        assertThat(nextDay.isOverdue).isTrue()
+        assertThat(nextDay.overdueDays).isEqualTo(1)
+    }
 }

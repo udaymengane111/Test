@@ -12,6 +12,7 @@ data class SettingsEntity(
     val notificationsEnabled: Boolean,
     val replacementRemindersEnabled: Boolean = true,
     val replacementIntervalDays: Int = 10,
+    val removalReminderSoundEnabled: Boolean = true,
     val currentZoneId: String,
 )
 

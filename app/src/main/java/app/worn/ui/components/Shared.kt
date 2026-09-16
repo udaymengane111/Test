@@ -29,13 +29,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.worn.domain.engine.DurationFormat
 import app.worn.domain.engine.TimelineSegment
+import app.worn.domain.engine.TimerSnapshot
 import app.worn.domain.model.ActivityType
 import app.worn.domain.model.SessionKind
 import app.worn.ui.theme.WornTheme
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import kotlin.math.max
 
 private val TimeFmt = DateTimeFormatter.ofPattern("HH:mm")
 
@@ -141,56 +141,41 @@ fun TimelineList(
     activities: List<ActivityType>,
     zone: ZoneId,
     nowMillis: Long,
+    timer: TimerSnapshot? = null,
     onEdit: (TimelineSegment) -> Unit,
 ) {
     val colors = WornTheme.colors
-    val longest = segments.maxOfOrNull { max(1L, it.endMillis - it.startMillis) } ?: 1L
-    Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
+    Column {
         segments.forEach { segment ->
             val start = Instant.ofEpochMilli(segment.startMillis).atZone(zone).toLocalTime().format(TimeFmt)
-            val endLabel = if (segment.session.endMillis == null && segment.endMillis >= nowMillis - 2_000) {
-                ""
-            } else {
-                Instant.ofEpochMilli(segment.endMillis).atZone(zone).toLocalTime().format(TimeFmt)
-            }
+            val current = segment.session.endMillis == null && segment.endMillis >= nowMillis - 2_000
+            val endLabel = if (current) "now" else Instant.ofEpochMilli(segment.endMillis).atZone(zone).toLocalTime().format(TimeFmt)
             val activity = activities.firstOrNull { it.id == segment.session.activityTypeId }
-            val title = if (segment.session.kind == SessionKind.WEAR) {
-                "WORN"
-            } else {
-                (activity?.name ?: "Removed").uppercase()
-            }
-            val fraction = ((segment.endMillis - segment.startMillis).toFloat() / longest.toFloat()).coerceIn(0.14f, 1f)
             val worn = segment.session.kind == SessionKind.WEAR
+            val title = if (worn) "Worn" else (activity?.name ?: "Removed")
+            val duration = DurationFormat.span(segment.endMillis - segment.startMillis)
+            val titleColor = if (worn) colors.text else colors.removed
             Column(
                 Modifier
                     .fillMaxWidth()
                     .defaultMinSize(minHeight = 48.dp)
                     .clickable { onEdit(segment) }
+                    .padding(vertical = 12.dp)
                     .semantics(mergeDescendants = true) {
-                        contentDescription = "$title $start ${endLabel.ifBlank { "now" }}"
+                        contentDescription = "$title $start $endLabel $duration"
                     },
             ) {
-                Text(
-                    if (endLabel.isBlank()) "$start  ━" else "$start  $endLabel",
-                    color = colors.secondary,
-                    fontSize = 13.sp,
-                )
-                Spacer(Modifier.height(8.dp))
-                Box(
-                    Modifier
-                        .fillMaxWidth(fraction)
-                        .height(if (worn) 3.dp else 2.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(if (worn) colors.text else colors.removed.copy(alpha = 0.55f)),
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    title,
-                    color = colors.tertiary,
-                    fontSize = 11.sp,
-                    letterSpacing = 1.8.sp,
-                    fontWeight = FontWeight.Medium,
-                )
+                Text("$start – $endLabel", color = colors.secondary, fontSize = 13.sp)
+                Spacer(Modifier.height(4.dp))
+                Text(title, color = titleColor, fontSize = 17.sp)
+                if (current && !worn && timer != null) {
+                    Text("${DurationFormat.span(timer.elapsedMillis)} elapsed", color = colors.secondary, fontSize = 14.sp)
+                    if (timer.overdue) {
+                        Text("${DurationFormat.span(timer.overdueMillis)} over", color = colors.warning, fontSize = 14.sp)
+                    }
+                } else {
+                    Text(duration, color = colors.tertiary, fontSize = 14.sp)
+                }
             }
         }
     }
@@ -233,7 +218,7 @@ fun DurationStepper(
             color = colors.secondary,
             fontSize = 22.sp,
             modifier = Modifier
-                .size(44.dp)
+                .size(48.dp)
                 .clickable { onChange((minutes - 5).coerceAtLeast(5)) }
                 .semantics { role = Role.Button; contentDescription = "Decrease $label" },
             textAlign = TextAlign.Center,
@@ -244,7 +229,7 @@ fun DurationStepper(
             color = colors.secondary,
             fontSize = 22.sp,
             modifier = Modifier
-                .size(44.dp)
+                .size(48.dp)
                 .clickable { onChange((minutes + 5).coerceAtMost(180)) }
                 .semantics { role = Role.Button; contentDescription = "Increase $label" },
             textAlign = TextAlign.Center,

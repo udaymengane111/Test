@@ -314,4 +314,34 @@ class ReportCalculatorTest {
         assertThat(report.days.first { it.date == LocalDate.of(2026, 9, 6) }.hasData).isFalse()
         assertThat(report.totalWornMillis).isEqualTo(0)
     }
+
+    @Test
+    fun quarterAndYearUseMonthlyBuckets() {
+        val jul = LocalDate.of(2026, 7, 2)
+        val aug = LocalDate.of(2026, 8, 2)
+        val sessions = listOf(wear(jul, 0, 20), wear(aug, 0, 21))
+        val quarter = ReportCalculator.report(
+            ReportGrain.QUARTER,
+            LocalDate.of(2026, 9, 1),
+            LocalDate.of(2026, 9, 16),
+            at(LocalDate.of(2026, 9, 16), 12),
+            sessions,
+            { record(it, 22) },
+            emptyList(),
+        )
+        assertThat(quarter.window.start).isEqualTo(LocalDate.of(2026, 7, 1))
+        assertThat(quarter.monthBuckets).hasSize(3)
+        assertThat(quarter.monthBuckets[0].hasData).isTrue()
+        assertThat(quarter.monthBuckets[2].hasData).isFalse()
+        val year = ReportCalculator.report(
+            ReportGrain.YEAR,
+            LocalDate.of(2026, 9, 1),
+            LocalDate.of(2026, 9, 16),
+            at(LocalDate.of(2026, 9, 16), 12),
+            sessions,
+            { record(it, 22) },
+            emptyList(),
+        )
+        assertThat(year.monthBuckets).hasSize(12)
+    }
 }

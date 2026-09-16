@@ -19,6 +19,7 @@ fun SettingsEntity.toModel() = UserSettings(
     notificationsEnabled = notificationsEnabled,
     replacementRemindersEnabled = replacementRemindersEnabled,
     replacementIntervalDays = replacementIntervalDays,
+    removalReminderSoundEnabled = removalReminderSoundEnabled,
     currentZoneId = currentZoneId,
 )
 

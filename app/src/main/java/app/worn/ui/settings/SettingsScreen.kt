@@ -240,6 +240,19 @@ fun SettingsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
+                Text("Removal reminder sound", color = colors.text, fontSize = 16.sp)
+                Text("Short alert every 5 minutes after the timer ends", color = colors.tertiary, fontSize = 13.sp)
+            }
+            Switch(
+                checked = settings.removalReminderSoundEnabled,
+                onCheckedChange = vm::setRemovalReminderSound,
+            )
+        }
+        Row(
+            Modifier.fillMaxWidth().defaultMinSize(minHeight = 52.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
                 Text("Aligner replacement reminder", color = colors.text, fontSize = 16.sp)
                 Text("When the next set is due", color = colors.tertiary, fontSize = 13.sp)
             }
@@ -249,6 +262,15 @@ fun SettingsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
                     vm.setReplacementReminders(it)
                     ReplacementReminders.sync(context)
                 },
+            )
+        }
+        val alarm = context.getSystemService(android.app.AlarmManager::class.java)
+        if (android.os.Build.VERSION.SDK_INT >= 31 && !alarm.canScheduleExactAlarms()) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Exact alarms are off. Reminders still work, but timing may be less precise.",
+                color = colors.tertiary,
+                fontSize = 13.sp,
             )
         }
 

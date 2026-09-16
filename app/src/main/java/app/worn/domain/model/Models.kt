@@ -57,6 +57,7 @@ data class UserSettings(
     val notificationsEnabled: Boolean,
     val replacementRemindersEnabled: Boolean,
     val replacementIntervalDays: Int,
+    val removalReminderSoundEnabled: Boolean,
     val currentZoneId: String,
 )
 

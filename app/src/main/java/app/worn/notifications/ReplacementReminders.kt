@@ -7,7 +7,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import app.worn.MainActivity
@@ -20,7 +19,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
-import java.util.concurrent.TimeUnit
 
 object ReplacementReminders {
     const val CHANNEL = "replacement"
@@ -29,6 +27,7 @@ object ReplacementReminders {
     const val ACTION_SNOOZE = "app.worn.action.SNOOZE_REPLACEMENT"
     private const val PREFS = "worn_replacement"
     private const val KEY_LAST = "last_notice_date"
+    private const val KEY_SNOOZE = "snooze_until"
 
     fun ensureChannel(context: Context) {
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(
@@ -63,9 +62,9 @@ object ReplacementReminders {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val text = if (overdue) {
-            "Set $setNumber was due. Record it when you can."
+            "Set $setNumber is due. Record it when you can."
         } else {
-            "Your next aligner set is due today."
+            "Set $setNumber is due today."
         }
         return NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
@@ -90,12 +89,15 @@ object ReplacementReminders {
         val sets = app.repository.alignerSets()
         val zone = ZoneId.of(settings.currentZoneId)
         val today = LocalDate.now(zone)
+        val snoozeUntil = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_SNOOZE, null)?.let(LocalDate::parse)
         val plan = TreatmentPlanCalculator.planReminder(
             sets = sets,
             intervalDays = settings.replacementIntervalDays,
             today = today,
             zone = zone,
             enabled = settings.replacementRemindersEnabled,
+            snoozeUntil = snoozeUntil,
         )
         val alarm = context.getSystemService(AlarmManager::class.java)
         val pending = duePending(context)
@@ -107,39 +109,32 @@ object ReplacementReminders {
             }
             ReminderAction.SCHEDULE -> {
                 val trigger = plan.triggerAtMillis ?: return
-                if (Build.VERSION.SDK_INT >= 31 && !alarm.canScheduleExactAlarms()) {
-                    alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, pending)
-                } else {
-                    alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, pending)
-                }
+                WornNotifications.scheduleWakeup(context, trigger, pending)
             }
         }
     }
 
     fun snoozeOneDay(context: Context) {
-        val alarm = context.getSystemService(AlarmManager::class.java)
-        val trigger = System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1)
-        if (Build.VERSION.SDK_INT >= 31 && !alarm.canScheduleExactAlarms()) {
-            alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, duePending(context))
-        } else {
-            alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, duePending(context))
-        }
+        val zone = ZoneId.systemDefault()
+        val until = LocalDate.now(zone).plusDays(1)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_SNOOZE, until.toString())
+            .apply()
+        NotificationManagerCompat.from(context).cancel(ID)
+        sync(context)
+    }
+
+    fun clearNotice(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .remove(KEY_LAST)
+            .remove(KEY_SNOOZE)
+            .apply()
         NotificationManagerCompat.from(context).cancel(ID)
     }
 
     suspend fun onDue(context: Context) {
-        val app = context.applicationContext as WornApp
-        val settings = app.repository.settings()
-        val sets = app.repository.alignerSets()
-        val today = LocalDate.now(ZoneId.of(settings.currentZoneId))
-        val schedule = TreatmentPlanCalculator.schedule(sets, settings.replacementIntervalDays, today)
-        val number = schedule.expectedNextSetNumber ?: return
-        maybeNotify(context, number, overdue = schedule.isOverdue)
-    }
-
-    fun clearNotice(context: Context) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_LAST).apply()
-        NotificationManagerCompat.from(context).cancel(ID)
+        syncNow(context)
     }
 
     private fun maybeNotify(context: Context, setNumber: Int, overdue: Boolean) {

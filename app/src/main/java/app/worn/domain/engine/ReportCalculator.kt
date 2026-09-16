@@ -36,6 +36,14 @@ data class ActivityRemovalStat(
     val averageMillis: Long,
 )
 
+data class MonthBucket(
+    val yearMonth: YearMonth,
+    val wornMillis: Long,
+    val hasData: Boolean,
+    val missedMillis: Long,
+    val daysWithData: Int,
+)
+
 data class PeriodReport(
     val window: ReportWindow,
     val days: List<DayBreakdown>,
@@ -53,6 +61,7 @@ data class PeriodReport(
     val lowestDay: DayBreakdown?,
     val removals: List<ActivityRemovalStat>,
     val totalOutMillis: Long,
+    val monthBuckets: List<MonthBucket>,
 )
 
 object ReportCalculator {
@@ -179,7 +188,22 @@ object ReportCalculator {
             lowestDay = if (ranked.size >= 2) lowest else null,
             removals = removalStats(sessions, win, nowMillis, activities, recordFor),
             totalOutMillis = totalOut,
+            monthBuckets = monthBuckets(days),
         )
+    }
+
+    fun monthBuckets(days: List<DayBreakdown>): List<MonthBucket> {
+        if (days.isEmpty()) return emptyList()
+        return days.groupBy { YearMonth.from(it.date) }.map { (ym, group) ->
+            val withData = group.filter { it.hasData }
+            MonthBucket(
+                yearMonth = ym,
+                wornMillis = withData.sumOf { it.wornMillis },
+                hasData = withData.isNotEmpty(),
+                missedMillis = withData.sumOf { it.missedMillis },
+                daysWithData = withData.size,
+            )
+        }
     }
 
     private fun removalStats(
@@ -206,9 +230,11 @@ object ReportCalculator {
             val prev = byId[id] ?: (0 to 0L)
             byId[id] = (prev.first + 1) to (prev.second + overlap)
         }
-        val known = activities.associateBy { it.id }
-        return byId.map { (id, value) ->
-            val name = known[id]?.name ?: "Other"
+        val known = activities.sortedBy { it.sortOrder }
+        val ids = (known.map { it.id } + byId.keys).distinct()
+        return ids.map { id ->
+            val value = byId[id] ?: (0 to 0L)
+            val name = known.firstOrNull { it.id == id }?.name ?: "Other"
             ActivityRemovalStat(
                 activityId = id,
                 name = name,
@@ -216,6 +242,6 @@ object ReportCalculator {
                 actualMillis = value.second,
                 averageMillis = if (value.first == 0) 0L else value.second / value.first,
             )
-        }.sortedBy { stat -> known[stat.activityId]?.sortOrder ?: 99 }
+        }.sortedBy { stat -> known.indexOfFirst { it.id == stat.activityId }.takeIf { it >= 0 } ?: 99 }
     }
 }

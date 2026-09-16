@@ -13,7 +13,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         DailyRecordEntity::class,
         AlignerSetEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class WornDatabase : RoomDatabase() {
@@ -31,6 +31,13 @@ abstract class WornDatabase : RoomDatabase() {
                 )
                 db.execSQL(
                     "ALTER TABLE settings ADD COLUMN replacementIntervalDays INTEGER NOT NULL DEFAULT 10",
+                )
+            }
+        }
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE settings ADD COLUMN removalReminderSoundEnabled INTEGER NOT NULL DEFAULT 1",
                 )
             }
         }

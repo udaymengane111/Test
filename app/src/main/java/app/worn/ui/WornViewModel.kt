@@ -190,6 +190,10 @@ class WornViewModel(
         viewModelScope.launch { repository.setReplacementRemindersEnabled(enabled) }
     }
 
+    fun setRemovalReminderSound(enabled: Boolean) {
+        viewModelScope.launch { repository.setRemovalReminderSoundEnabled(enabled) }
+    }
+
     fun editSession(session: TrackingSession, onResult: (Boolean) -> Unit) {
         viewModelScope.launch { onResult(repository.editSession(session)) }
     }

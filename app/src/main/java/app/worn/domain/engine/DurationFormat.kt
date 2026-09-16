@@ -19,6 +19,13 @@ object DurationFormat {
         return "${hours}h ${minutes}m"
     }
 
+    fun span(millis: Long): String {
+        val totalMinutes = TimeUnit.MILLISECONDS.toMinutes(abs(millis))
+        val hours = totalMinutes / 60
+        val minutes = totalMinutes % 60
+        return if (hours == 0L) "${minutes}m" else "${hours}h ${minutes}m"
+    }
+
     fun timer(millis: Long): String {
         val totalSeconds = TimeUnit.MILLISECONDS.toSeconds(abs(millis)).coerceAtLeast(0)
         val minutes = totalSeconds / 60

@@ -8,8 +8,8 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.ServiceCompat
 import app.worn.WornApp
-import app.worn.domain.engine.ActivityTimerCalculator
 import app.worn.domain.model.SessionKind
+import app.worn.notifications.RemovalAlerts
 import app.worn.notifications.WornNotifications
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,7 +22,6 @@ import kotlinx.coroutines.launch
 class RemovalTimerService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var ticker: Job? = null
-    private var expiryPostedForId: String? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -39,6 +38,8 @@ class RemovalTimerService : Service() {
                 stopSelf()
                 return@launch
             }
+            val soundDefault = app.repository.settings().removalReminderSoundEnabled
+            RemovalAlerts.bind(this@RemovalTimerService, open, soundDefault)
             val activities = app.database.activities().getAll()
             val name = activities.firstOrNull { it.id == open.activityTypeId }?.name ?: "Activity"
             val notification = WornNotifications.ongoing(this@RemovalTimerService, name, open, System.currentTimeMillis())
@@ -52,12 +53,13 @@ class RemovalTimerService : Service() {
             } else {
                 startForeground(WornNotifications.ID_ONGOING, notification)
             }
-            WornNotifications.scheduleExpiry(this@RemovalTimerService, open)
+            RemovalAlerts.sync(this@RemovalTimerService, open)
             ticker?.cancel()
             ticker = launch {
                 while (isActive) {
                     val current = app.repository.openSession()
                     if (current == null || current.kind != SessionKind.REMOVAL) {
+                        RemovalAlerts.clear(this@RemovalTimerService)
                         stopSelf()
                         break
                     }
@@ -67,16 +69,6 @@ class RemovalTimerService : Service() {
                         WornNotifications.ID_ONGOING,
                         WornNotifications.ongoing(this@RemovalTimerService, n, current, System.currentTimeMillis()),
                     )
-                    val snap = ActivityTimerCalculator.snapshot(current, System.currentTimeMillis())
-                    if (!snap.overdue) {
-                        expiryPostedForId = null
-                    } else if (!snap.paused && expiryPostedForId != current.id) {
-                        expiryPostedForId = current.id
-                        manager.notify(
-                            WornNotifications.ID_TIMER_DONE,
-                            WornNotifications.timerDone(this@RemovalTimerService, n),
-                        )
-                    }
                     delay(1_000)
                 }
             }
@@ -95,7 +87,9 @@ class RemovalTimerService : Service() {
             CoroutineScope(Dispatchers.IO).launch {
                 val open = app.repository.openSession()
                 if (open != null && open.kind == SessionKind.REMOVAL) {
-                    WornNotifications.scheduleExpiry(context, open)
+                    val soundDefault = app.repository.settings().removalReminderSoundEnabled
+                    RemovalAlerts.bind(context, open, soundDefault)
+                    RemovalAlerts.sync(context, open)
                     val intent = Intent(context, RemovalTimerService::class.java)
                     if (Build.VERSION.SDK_INT >= 26) {
                         context.startForegroundService(intent)
@@ -103,7 +97,7 @@ class RemovalTimerService : Service() {
                         context.startService(intent)
                     }
                 } else {
-                    WornNotifications.cancelExpiry(context)
+                    RemovalAlerts.clear(context)
                     context.stopService(Intent(context, RemovalTimerService::class.java))
                 }
             }

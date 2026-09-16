@@ -36,8 +36,10 @@ data class TreatmentSchedule(
     val expectedNextSetNumber: Int?,
     val overdueDays: Long,
     val reminderDate: LocalDate?,
+    val daysUntilReplacement: Long?,
 ) {
     val isOverdue: Boolean get() = overdueDays > 0L
+    val dueToday: Boolean get() = daysUntilReplacement == 0L
 }
 
 object TreatmentPlanCalculator {
@@ -73,6 +75,7 @@ object TreatmentPlanCalculator {
         } else {
             0L
         }
+        val until = expected?.let { ChronoUnit.DAYS.between(today, it) }
         return TreatmentSchedule(
             periods = periods,
             current = current,
@@ -81,6 +84,7 @@ object TreatmentPlanCalculator {
             expectedNextSetNumber = if (current == null) 1 else nextNumber,
             overdueDays = overdue,
             reminderDate = expected,
+            daysUntilReplacement = until,
         )
     }
 
@@ -118,6 +122,7 @@ object TreatmentPlanCalculator {
         today: LocalDate,
         zone: ZoneId,
         enabled: Boolean,
+        snoozeUntil: LocalDate? = null,
     ): ReplacementReminderPlan {
         val schedule = schedule(sets, intervalDays, today)
         if (!enabled || schedule.current == null || schedule.reminderDate == null) {
@@ -131,6 +136,15 @@ object TreatmentPlanCalculator {
         }
         val due = schedule.reminderDate
         val nextNumber = schedule.expectedNextSetNumber
+        if (snoozeUntil != null && today.isBefore(snoozeUntil)) {
+            return ReplacementReminderPlan(
+                action = ReminderAction.SCHEDULE,
+                reminderDate = due,
+                triggerAtMillis = reminderInstantMillis(snoozeUntil, zone),
+                nextSetNumber = nextNumber,
+                overdue = schedule.isOverdue,
+            )
+        }
         if (!due.isAfter(today)) {
             return ReplacementReminderPlan(
                 action = ReminderAction.NOTIFY_NOW,

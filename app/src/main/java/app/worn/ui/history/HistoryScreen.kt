@@ -16,6 +16,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -47,12 +50,7 @@ fun HistoryScreen(state: TodayUiState, onOpenDay: (LocalDate) -> Unit, onReports
         ) {
             Text("History", color = colors.text, fontSize = 32.sp, fontWeight = FontWeight.Light)
             Spacer(Modifier.height(8.dp))
-            Text(
-                "Reports",
-                color = colors.secondary,
-                fontSize = 15.sp,
-                modifier = Modifier.defaultMinSize(minHeight = 44.dp).clickable(onClick = onReports).padding(vertical = 8.dp),
-            )
+            ReportsLink(onReports)
             Spacer(Modifier.height(40.dp))
             Text("No history yet", color = colors.text, fontSize = 20.sp, fontWeight = FontWeight.Light)
             Spacer(Modifier.height(8.dp))
@@ -70,12 +68,7 @@ fun HistoryScreen(state: TodayUiState, onOpenDay: (LocalDate) -> Unit, onReports
             Spacer(Modifier.height(16.dp))
             Text("History", color = colors.text, fontSize = 32.sp, fontWeight = FontWeight.Light)
             Spacer(Modifier.height(8.dp))
-            Text(
-                "Reports",
-                color = colors.secondary,
-                fontSize = 15.sp,
-                modifier = Modifier.defaultMinSize(minHeight = 44.dp).clickable(onClick = onReports).padding(vertical = 8.dp),
-            )
+            ReportsLink(onReports)
             Spacer(Modifier.height(20.dp))
             SectionLabel("This week")
             Spacer(Modifier.height(14.dp))
@@ -150,5 +143,22 @@ private fun HistoryItem(row: HistoryRow, weekday: Boolean, onClick: () -> Unit) 
             modifier = Modifier.padding(end = 16.dp),
         )
         Text(pct, color = colors.tertiary, fontSize = 15.sp)
+    }
+}
+
+@Composable
+private fun ReportsLink(onReports: () -> Unit) {
+    val colors = WornTheme.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 48.dp)
+            .clickable(onClick = onReports)
+            .padding(vertical = 12.dp)
+            .semantics { contentDescription = "Open reports" },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Reports", color = colors.text, fontSize = 17.sp, modifier = Modifier.weight(1f))
+        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = colors.secondary)
     }
 }

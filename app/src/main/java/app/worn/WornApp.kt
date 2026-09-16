@@ -17,7 +17,7 @@ class WornApp : Application() {
         super.onCreate()
         instance = this
         database = Room.databaseBuilder(this, WornDatabase::class.java, "worn.db")
-            .addMigrations(WornDatabase.MIGRATION_1_2)
+            .addMigrations(WornDatabase.MIGRATION_1_2, WornDatabase.MIGRATION_2_3)
             .build()
         repository = TrackingRepository(database)
         WornNotifications.ensureChannels(this)

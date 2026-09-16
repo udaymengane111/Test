@@ -274,6 +274,11 @@ class TrackingRepository(
         db.settings().upsert(current.copy(replacementRemindersEnabled = enabled))
     }
 
+    suspend fun setRemovalReminderSoundEnabled(enabled: Boolean) {
+        val current = db.settings().get() ?: return
+        db.settings().upsert(current.copy(removalReminderSoundEnabled = enabled))
+    }
+
     /**
      * Records an aligner set with an actual start date (today or historical).
      * Returns a user-facing error, or null on success.
@@ -356,6 +361,7 @@ class TrackingRepository(
         notificationsEnabled = false,
         replacementRemindersEnabled = true,
         replacementIntervalDays = 10,
+        removalReminderSoundEnabled = true,
         currentZoneId = zoneProvider().id,
     )
 }

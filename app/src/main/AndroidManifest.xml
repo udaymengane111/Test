@@ -45,6 +45,7 @@
             <intent-filter>
                 <action android:name="app.worn.action.PUT_BACK" />
                 <action android:name="app.worn.action.SNOOZE" />
+                <action android:name="app.worn.action.MUTE_REMINDERS" />
                 <action android:name="app.worn.action.TIMER_ALARM" />
                 <action android:name="app.worn.action.REPLACEMENT_DUE" />
                 <action android:name="app.worn.action.SNOOZE_REPLACEMENT" />
