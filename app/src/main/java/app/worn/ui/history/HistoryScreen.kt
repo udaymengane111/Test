@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import app.worn.domain.engine.DurationFormat
 import app.worn.ui.HistoryRow
 import app.worn.ui.TodayUiState
+import app.worn.ui.components.Hairline
 import app.worn.ui.components.SectionLabel
 import app.worn.ui.theme.WornTheme
 import java.time.LocalDate
@@ -48,13 +49,13 @@ fun HistoryScreen(state: TodayUiState, onOpenDay: (LocalDate) -> Unit, onReports
                 .fillMaxSize()
                 .padding(horizontal = 28.dp, vertical = 20.dp),
         ) {
-            Text("History", color = colors.text, fontSize = 32.sp, fontWeight = FontWeight.Light)
+            Text("History", color = colors.text, fontSize = 34.sp, fontWeight = FontWeight.Light)
             Spacer(Modifier.height(8.dp))
             ReportsLink(onReports)
-            Spacer(Modifier.height(40.dp))
-            Text("No history yet", color = colors.text, fontSize = 20.sp, fontWeight = FontWeight.Light)
+            Spacer(Modifier.height(48.dp))
+            Text("No history yet", color = colors.text, fontSize = 22.sp, fontWeight = FontWeight.Light)
             Spacer(Modifier.height(8.dp))
-            Text("Your daily wear history will appear here.", color = colors.secondary, fontSize = 15.sp)
+            Text("Your daily wear history will appear here.", color = colors.secondary, fontSize = 15.sp, lineHeight = 22.sp)
         }
         return
     }
@@ -66,17 +67,26 @@ fun HistoryScreen(state: TodayUiState, onOpenDay: (LocalDate) -> Unit, onReports
     ) {
         item {
             Spacer(Modifier.height(16.dp))
-            Text("History", color = colors.text, fontSize = 32.sp, fontWeight = FontWeight.Light)
+            Text("History", color = colors.text, fontSize = 34.sp, fontWeight = FontWeight.Light)
             Spacer(Modifier.height(8.dp))
             ReportsLink(onReports)
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(28.dp))
+            SectionLabel("7-day average")
+            Spacer(Modifier.height(10.dp))
+            Text(
+                DurationFormat.hoursMinutes(state.sevenDayAverageMillis),
+                color = colors.text,
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Light,
+            )
+            Spacer(Modifier.height(28.dp))
             SectionLabel("This week")
             Spacer(Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 state.thisWeek.forEach { row ->
                     Box(
                         Modifier
-                            .size(8.dp)
+                            .size(10.dp)
                             .clip(CircleShape)
                             .background(if (row.totals.targetReached) colors.accent else colors.ringTrack)
                             .semantics {
@@ -90,20 +100,11 @@ fun HistoryScreen(state: TodayUiState, onOpenDay: (LocalDate) -> Unit, onReports
         items(state.thisWeek, key = { "w-${it.date}" }) { row ->
             HistoryItem(row, weekday = true) { onOpenDay(row.date) }
         }
-        item {
-            Spacer(Modifier.height(28.dp))
-            Text("7-day average", color = colors.tertiary, fontSize = 13.sp)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                DurationFormat.hoursMinutesCompact(state.sevenDayAverageMillis),
-                color = colors.text,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Light,
-            )
-        }
         if (state.earlierDays.isNotEmpty()) {
             item {
-                Spacer(Modifier.height(36.dp))
+                Spacer(Modifier.height(32.dp))
+                Hairline()
+                Spacer(Modifier.height(28.dp))
                 SectionLabel("Earlier")
                 Spacer(Modifier.height(8.dp))
             }
@@ -119,30 +120,37 @@ fun HistoryScreen(state: TodayUiState, onOpenDay: (LocalDate) -> Unit, onReports
 private fun HistoryItem(row: HistoryRow, weekday: Boolean, onClick: () -> Unit) {
     val colors = WornTheme.colors
     val label = if (weekday) {
-        row.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault())
+        row.date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.getDefault())
     } else {
-        row.date.format(DateTimeFormatter.ofPattern("MMM d"))
+        row.date.format(DateTimeFormatter.ofPattern("EEE d MMM"))
     }
+    val worn = DurationFormat.hoursMinutes(row.totals.wornMillis)
     val pct = DurationFormat.percent(row.totals.progress.coerceAtMost(1f))
     Row(
         Modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 48.dp)
+            .defaultMinSize(minHeight = 56.dp)
             .clickable(onClick = onClick)
-            .padding(vertical = 12.dp)
+            .padding(vertical = 14.dp)
             .semantics(mergeDescendants = true) {
-                contentDescription = "$label ${DurationFormat.hoursMinutesCompact(row.totals.wornMillis)} $pct"
+                contentDescription = "$label $worn $pct"
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, color = colors.text, fontSize = 16.sp, modifier = Modifier.weight(1f))
+        Column(Modifier.weight(1f)) {
+            Text(label, color = colors.text, fontSize = 16.sp)
+            if (!weekday) {
+                Spacer(Modifier.height(2.dp))
+                Text(row.date.format(DateTimeFormatter.ofPattern("yyyy")), color = colors.tertiary, fontSize = 12.sp)
+            }
+        }
         Text(
-            DurationFormat.hoursMinutesCompact(row.totals.wornMillis),
-            color = colors.secondary,
-            fontSize = 15.sp,
-            modifier = Modifier.padding(end = 16.dp),
+            worn,
+            color = colors.text,
+            fontSize = 16.sp,
+            modifier = Modifier.padding(end = 14.dp),
         )
-        Text(pct, color = colors.tertiary, fontSize = 15.sp)
+        Text(pct, color = colors.tertiary, fontSize = 14.sp)
     }
 }
 

@@ -21,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,9 +43,12 @@ import app.worn.notifications.ReplacementReminders
 import app.worn.notifications.WornNotifications
 import app.worn.ui.TodayUiState
 import app.worn.ui.WornViewModel
-import app.worn.ui.components.DaysStepper
 import app.worn.ui.components.DurationStepper
+import app.worn.ui.components.PresetRow
 import app.worn.ui.components.SectionLabel
+import app.worn.ui.components.SettingsNavRow
+import app.worn.ui.components.SettingsToggle
+import app.worn.ui.components.TreatmentPlanSection
 import app.worn.ui.theme.WornTheme
 import java.util.UUID
 
@@ -70,7 +72,7 @@ fun SettingsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 28.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
@@ -87,24 +89,14 @@ fun SettingsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
             fontSize = 36.sp,
             fontWeight = FontWeight.Light,
         )
-        Spacer(Modifier.height(12.dp))
-        Row {
-            listOf(20, 21, 22).forEach { hours ->
-                val selected = settings.dailyWearTargetMinutes == hours * 60 && customHours.isBlank()
-                Text(
-                    "${hours}h",
-                    color = if (selected) colors.text else colors.secondary,
-                    fontSize = 16.sp,
-                    modifier = Modifier
-                        .padding(end = 20.dp)
-                        .defaultMinSize(minHeight = 44.dp)
-                        .clickable {
-                            customHours = ""
-                            vm.updateTarget(hours * 60)
-                        }
-                        .padding(vertical = 10.dp),
-                )
-            }
+        Spacer(Modifier.height(8.dp))
+        PresetRow(
+            options = listOf(20, 21, 22),
+            selected = if (customHours.isBlank()) settings.dailyWearTargetMinutes / 60 else -1,
+            formatter = { "${it}h" },
+        ) { hours ->
+            customHours = ""
+            vm.updateTarget(hours * 60)
         }
         BasicTextField(
             value = customHours,
@@ -198,122 +190,63 @@ fun SettingsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
             }) { Text("Save activity") }
         }
 
-        Spacer(Modifier.height(32.dp))
-        SectionLabel("Treatment plan")
-        Spacer(Modifier.height(8.dp))
-        Text("Replace aligner every", color = colors.text, fontSize = 16.sp)
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "${settings.replacementIntervalDays} days",
-            color = colors.text,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Light,
-        )
-        Row {
-            listOf(7, 10, 14).forEach { days ->
-                val selected = settings.replacementIntervalDays == days
-                Text(
-                    "$days",
-                    color = if (selected) colors.text else colors.secondary,
-                    fontSize = 16.sp,
-                    modifier = Modifier
-                        .padding(end = 20.dp)
-                        .defaultMinSize(minHeight = 44.dp)
-                        .clickable {
-                            vm.updateReplacementInterval(days)
-                            ReplacementReminders.sync(context)
-                        }
-                        .padding(vertical = 10.dp),
-                )
-            }
-        }
-        DaysStepper("Custom days", settings.replacementIntervalDays.coerceIn(1, 90)) { days ->
+        Spacer(Modifier.height(36.dp))
+        TreatmentPlanSection(settings.replacementIntervalDays) { days ->
             vm.updateReplacementInterval(days)
             ReplacementReminders.sync(context)
         }
 
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(36.dp))
         SectionLabel("Notifications")
-        Row(
-            Modifier.fillMaxWidth().defaultMinSize(minHeight = 52.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text("Timer reminder", color = colors.text, fontSize = 16.sp)
-                Text("When a removal timer ends", color = colors.tertiary, fontSize = 13.sp)
-            }
-            Switch(checked = settings.notificationsEnabled, onCheckedChange = vm::setNotifications)
-        }
-        Row(
-            Modifier.fillMaxWidth().defaultMinSize(minHeight = 52.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text("Removal reminder sound", color = colors.text, fontSize = 16.sp)
-                Text("Play an alert every 5 minutes after the timer ends", color = colors.tertiary, fontSize = 13.sp)
-            }
-            Switch(
-                checked = settings.removalReminderSoundEnabled,
-                onCheckedChange = vm::setRemovalReminderSound,
-            )
-        }
-        Text(
-            "Test notification sound",
-            color = colors.text,
-            fontSize = 16.sp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .defaultMinSize(minHeight = 48.dp)
-                .clickable {
-                    WornNotifications.ensureChannels(context)
-                    if (Build.VERSION.SDK_INT >= 33 && !WornNotifications.notificationsAllowed(context)) {
-                        permission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    } else if (!WornNotifications.timerChannelIsAudible(context)) {
-                        WornNotifications.openTimerChannelSettings(context)
-                    } else {
-                        WornNotifications.postSoundTest(context)
-                    }
-                }
-                .padding(vertical = 12.dp),
+        Spacer(Modifier.height(8.dp))
+        SettingsToggle(
+            title = "Timer reminder",
+            description = "When a removal timer ends",
+            checked = settings.notificationsEnabled,
+            onCheckedChange = vm::setNotifications,
         )
-        Text(
-            "Sends a real notification on the timer reminder channel.",
-            color = colors.tertiary,
-            fontSize = 13.sp,
+        SettingsToggle(
+            title = "Removal reminder sound",
+            description = "Short alert every 5 minutes after timer ends",
+            checked = settings.removalReminderSoundEnabled,
+            onCheckedChange = vm::setRemovalReminderSound,
+        )
+        SettingsNavRow(
+            title = "Test notification sound",
+            description = "Test your device's notification alert. Sound depends on Android notification settings.",
+            onClick = {
+                WornNotifications.ensureChannels(context)
+                if (Build.VERSION.SDK_INT >= 33 && !WornNotifications.notificationsAllowed(context)) {
+                    permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else if (!WornNotifications.timerChannelIsAudible(context)) {
+                    WornNotifications.openTimerChannelSettings(context)
+                } else {
+                    WornNotifications.postSoundTest(context)
+                }
+            },
         )
         if (!WornNotifications.timerChannelIsAudible(context) || !WornNotifications.notificationsAllowed(context)) {
-            Spacer(Modifier.height(8.dp))
             Text(
                 "Sound is off in Android notification settings. Worn cannot override that.",
                 color = colors.warning,
                 fontSize = 13.sp,
+                lineHeight = 18.sp,
             )
-            Text(
-                "Open timer notification settings",
-                color = colors.text,
-                fontSize = 15.sp,
-                modifier = Modifier
-                    .defaultMinSize(minHeight = 48.dp)
-                    .clickable { WornNotifications.openTimerChannelSettings(context) }
-                    .padding(vertical = 12.dp),
+            SettingsNavRow(
+                title = "Android notification settings",
+                description = "Open the timer reminder channel on this device",
+                onClick = { WornNotifications.openTimerChannelSettings(context) },
             )
         }
-        Row(
-            Modifier.fillMaxWidth().defaultMinSize(minHeight = 52.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text("Aligner replacement reminder", color = colors.text, fontSize = 16.sp)
-                Text("When the next set is due", color = colors.tertiary, fontSize = 13.sp)
-            }
-            Switch(
-                checked = settings.replacementRemindersEnabled,
-                onCheckedChange = {
-                    vm.setReplacementReminders(it)
-                    ReplacementReminders.sync(context)
-                },
-            )
-        }
+        SettingsToggle(
+            title = "Aligner replacement reminder",
+            description = "When the next set is due",
+            checked = settings.replacementRemindersEnabled,
+            onCheckedChange = {
+                vm.setReplacementReminders(it)
+                ReplacementReminders.sync(context)
+            },
+        )
         val alarm = context.getSystemService(android.app.AlarmManager::class.java)
         if (android.os.Build.VERSION.SDK_INT >= 31 && !alarm.canScheduleExactAlarms()) {
             Spacer(Modifier.height(8.dp))

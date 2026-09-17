@@ -2,8 +2,11 @@ package app.worn.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material.icons.Icons
@@ -74,10 +77,13 @@ fun WornRoot(state: TodayUiState, vm: WornViewModel) {
         containerColor = colors.background,
         contentWindowInsets = WindowInsets.safeDrawing,
         bottomBar = {
-            NavigationBar(containerColor = colors.background, tonalElevation = 0.dp) {
-                NavItem(tab == Tab.Today, "Today", Icons.Outlined.Schedule) { tab = Tab.Today }
-                NavItem(tab == Tab.History, "History", Icons.Outlined.CalendarMonth) { tab = Tab.History }
-                NavItem(tab == Tab.Treatment, "Treatment", Icons.Outlined.Layers) { tab = Tab.Treatment }
+            Column {
+                Box(Modifier.fillMaxWidth().height(1.dp).background(colors.hairline))
+                NavigationBar(containerColor = colors.background, tonalElevation = 0.dp) {
+                    NavItem(tab == Tab.Today, "Today", Icons.Outlined.Schedule) { tab = Tab.Today }
+                    NavItem(tab == Tab.History, "History", Icons.Outlined.CalendarMonth) { tab = Tab.History }
+                    NavItem(tab == Tab.Treatment, "Treatment", Icons.Outlined.Layers) { tab = Tab.Treatment }
+                }
             }
         },
     ) { padding ->

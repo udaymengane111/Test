@@ -34,9 +34,11 @@ import androidx.compose.foundation.text.BasicTextField
 import app.worn.notifications.ReplacementReminders
 import app.worn.ui.TodayUiState
 import app.worn.ui.WornViewModel
+import app.worn.ui.components.Hairline
 import app.worn.ui.components.PastOrTodayDatePicker
 import app.worn.ui.components.PrimaryButton
 import app.worn.ui.components.SectionLabel
+import app.worn.ui.components.TreatmentPlanSection
 import app.worn.ui.theme.WornTheme
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -78,12 +80,21 @@ fun TreatmentScreen(
             .padding(horizontal = 28.dp),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("Treatment", color = colors.text, fontSize = 32.sp, fontWeight = FontWeight.Light, modifier = Modifier.weight(1f))
+            Text("Treatment", color = colors.text, fontSize = 34.sp, fontWeight = FontWeight.Light, modifier = Modifier.weight(1f))
             IconButton(onClick = onSettings) {
                 Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = colors.secondary)
             }
         }
         Spacer(Modifier.height(36.dp))
+        state.settings?.let { settings ->
+            TreatmentPlanSection(settings.replacementIntervalDays) { days ->
+                vm.updateReplacementInterval(days)
+                ReplacementReminders.sync(context)
+            }
+            Spacer(Modifier.height(36.dp))
+            Hairline()
+        }
+        Spacer(Modifier.height(28.dp))
         SectionLabel("Current aligner")
         Spacer(Modifier.height(12.dp))
         if (current != null) {

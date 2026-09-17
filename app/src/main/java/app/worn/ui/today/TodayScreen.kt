@@ -49,11 +49,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.worn.domain.engine.DurationFormat
 import app.worn.domain.engine.TimelineSegment
-import app.worn.domain.model.SessionKind
 import app.worn.notifications.RemovalAlerts
 import app.worn.service.RemovalTimerService
 import app.worn.ui.TodayUiState
 import app.worn.ui.WornViewModel
+import app.worn.ui.components.ButtonTone
 import app.worn.ui.components.DayMetrics
 import app.worn.ui.components.Hairline
 import app.worn.ui.components.PrimaryButton
@@ -95,7 +95,7 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 28.dp, vertical = 8.dp),
+            .padding(horizontal = 28.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -103,14 +103,14 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
                 Text(
                     if (state.isToday) "Today" else state.selectedDate.format(DateTimeFormatter.ofPattern("EEE d MMM")),
                     color = colors.text,
-                    fontSize = 28.sp,
+                    fontSize = 34.sp,
                     fontWeight = FontWeight.Light,
                     modifier = Modifier
                         .defaultMinSize(minHeight = 48.dp)
                         .clickable { vm.goToday() }
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = 4.dp),
                 )
-                Text(headerDate, color = colors.secondary, fontSize = 14.sp)
+                Text(headerDate, color = colors.secondary, fontSize = 15.sp)
             }
             Row {
                 Icon(
@@ -192,31 +192,21 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
             }
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(20.dp))
         WearRing(
             wornMillis = totals.wornMillis,
             targetMillis = totals.targetMillis,
             wearing = state.wearing,
             targetReached = totals.targetReached,
         )
+        Spacer(Modifier.height(6.dp))
         Text(
-            if (totals.targetReached) DurationFormat.hoursMinutes(totals.targetMillis) + " target"
-            else DurationFormat.percent(totals.progress.coerceAtMost(1f)),
+            DurationFormat.hoursMinutes(totals.targetMillis) + " target",
             color = colors.secondary,
-            fontSize = 14.sp,
+            fontSize = 15.sp,
         )
-        if (!totals.targetReached) {
-            Spacer(Modifier.height(2.dp))
-            Text(
-                DurationFormat.hoursMinutes(totals.targetMillis) + " target",
-                color = colors.secondary,
-                fontSize = 15.sp,
-            )
-        }
 
-        Spacer(Modifier.height(24.dp))
-        Hairline()
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(28.dp))
         DayMetrics(totals.wornMillis, totals.remainingMillis, totals.notWornMillis, totals.targetReached)
 
         Spacer(Modifier.height(28.dp))
@@ -230,50 +220,56 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
                 WearingStatus(wearing)
                 if (!wearing && timer != null) {
                     val activityName = state.activities.firstOrNull { it.id == state.openSession?.activityTypeId }?.name ?: "Activity"
-                    Spacer(Modifier.height(16.dp))
-                    Text(activityName, color = colors.text, fontSize = 18.sp)
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(12.dp))
+                    Text(activityName, color = colors.text, fontSize = 22.sp, fontWeight = FontWeight.Light)
+                    Spacer(Modifier.height(20.dp))
                     when {
                         paused == true -> {
-                            Text("Paused", color = colors.secondary, fontSize = 13.sp, letterSpacing = 1.2.sp)
                             Text(
                                 DurationFormat.timer(timer.remainingMillis.coerceAtLeast(0)),
                                 color = colors.text,
-                                fontSize = 44.sp,
+                                fontSize = 56.sp,
                                 fontWeight = FontWeight.Light,
+                                letterSpacing = (-1).sp,
                             )
                             Text("remaining", color = colors.secondary, fontSize = 15.sp)
+                            Spacer(Modifier.height(4.dp))
+                            Text("Paused", color = colors.tertiary, fontSize = 13.sp, letterSpacing = 1.2.sp)
                         }
                         overdueTimer == true -> {
-                            Text("TIME'S UP", color = colors.warning, fontSize = 13.sp, letterSpacing = 1.4.sp, fontWeight = FontWeight.Medium)
+                            Text(
+                                "TIME'S UP",
+                                color = colors.warning,
+                                fontSize = 13.sp,
+                                letterSpacing = 1.8.sp,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            Spacer(Modifier.height(8.dp))
                             Text(
                                 DurationFormat.timer(timer.overdueMillis),
                                 color = colors.warning,
-                                fontSize = 44.sp,
+                                fontSize = 56.sp,
                                 fontWeight = FontWeight.Light,
+                                letterSpacing = (-1).sp,
                             )
-                            Text("over — put your aligner back", color = colors.secondary, fontSize = 15.sp)
+                            Text("over", color = colors.secondary, fontSize = 15.sp)
                         }
                         else -> {
                             Text(
                                 DurationFormat.timer(timer.remainingMillis),
                                 color = colors.text,
-                                fontSize = 44.sp,
+                                fontSize = 56.sp,
                                 fontWeight = FontWeight.Light,
+                                letterSpacing = (-1).sp,
                             )
                             Text("remaining", color = colors.secondary, fontSize = 15.sp)
-                            Text(
-                                "${DurationFormat.span(timer.elapsedMillis)} elapsed",
-                                color = colors.tertiary,
-                                fontSize = 13.sp,
-                            )
                         }
                     }
                 }
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(24.dp))
                 if (state.isToday) {
                     if (wearing) {
-                        PrimaryButton("REMOVE ALIGNER", onClick = {
+                        PrimaryButton("REMOVE ALIGNER", tone = ButtonTone.Removal, onClick = {
                             val needPermission = Build.VERSION.SDK_INT >= 33 &&
                                 ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
                                 PackageManager.PERMISSION_GRANTED
@@ -297,7 +293,7 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
                         }
                         if (overdueTimer == true) {
                             Text(
-                                if (muted) "🔇 Sound reminders muted" else "🔊 Sound reminders on",
+                                if (muted) "Sound reminders muted" else "Mute sound reminders",
                                 color = colors.secondary,
                                 fontSize = 15.sp,
                                 modifier = Modifier
@@ -315,7 +311,9 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
             }
         }
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(36.dp))
+        Hairline()
+        Spacer(Modifier.height(24.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             SectionLabel("Timeline")
             Text(
@@ -328,22 +326,20 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
                     .padding(vertical = 12.dp),
             )
         }
-        if (state.segments.isNotEmpty()) {
-            val wornCount = state.segments.count { it.session.kind == SessionKind.WEAR }
-            val outCount = state.segments.count { it.session.kind == SessionKind.REMOVAL }
-            Text(
-                "Worn ${DurationFormat.span(totals.wornMillis)}  ·  Out ${DurationFormat.span(totals.notWornMillis)}  ·  $wornCount wear, $outCount out",
-                color = colors.tertiary,
-                fontSize = 12.sp,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
         if (state.segments.isEmpty()) {
-            Spacer(Modifier.height(12.dp))
-            Text("Intervals you wear and remove will appear here.", color = colors.secondary, fontSize = 14.sp)
+            Spacer(Modifier.height(8.dp))
+            Text("Intervals you wear and remove will appear here.", color = colors.secondary, fontSize = 15.sp)
         } else {
             Spacer(Modifier.height(8.dp))
-            TimelineList(state.segments, state.activities, zone, state.nowMillis, state.timer) { editing = it }
+            TimelineList(
+                segments = state.segments,
+                activities = state.activities,
+                zone = zone,
+                nowMillis = state.nowMillis,
+                timer = state.timer,
+                wornMillis = totals.wornMillis,
+                outMillis = totals.notWornMillis,
+            ) { editing = it }
         }
         Spacer(Modifier.height(36.dp))
     }

@@ -77,21 +77,20 @@ fun ReportsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
             }
             Text("Reports", color = colors.text, fontSize = 28.sp, fontWeight = FontWeight.Light)
         }
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             ReportGrain.entries.forEach { grain ->
                 val selected = state.reportGrain == grain
                 Text(
-                    grain.name,
+                    grain.label(),
                     color = if (selected) colors.text else colors.secondary,
-                    fontSize = 12.sp,
+                    fontSize = 14.sp,
                     fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
-                    letterSpacing = 0.4.sp,
                     modifier = Modifier
                         .defaultMinSize(minHeight = 48.dp)
                         .semantics { role = Role.Button }
                         .clickable { vm.setReportGrain(grain) }
-                        .padding(vertical = 14.dp),
+                        .padding(horizontal = 2.dp, vertical = 14.dp),
                 )
             }
         }
@@ -100,7 +99,7 @@ fun ReportsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
                 Icon(Icons.Outlined.ChevronLeft, contentDescription = "Previous period", tint = colors.secondary)
             }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(title, color = colors.text, fontSize = 18.sp, fontWeight = FontWeight.Light)
+                Text(title, color = colors.text, fontSize = 20.sp, fontWeight = FontWeight.Light)
                 if (report.window.grain == ReportGrain.QUARTER) {
                     Text(
                         report.window.start.format(DateTimeFormatter.ofPattern("MMM")) +
@@ -131,37 +130,39 @@ fun ReportsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
 private fun ReportBody(report: PeriodReport, today: LocalDate) {
     val colors = WornTheme.colors
     SectionLabel("Total worn")
-    Spacer(Modifier.height(8.dp))
+    Spacer(Modifier.height(10.dp))
     Text(DurationFormat.hoursMinutes(report.totalWornMillis), color = colors.text, fontSize = 40.sp, fontWeight = FontWeight.Light)
+    Spacer(Modifier.height(6.dp))
     Text(DurationFormat.percentPrecise(report.achievement) + " of target", color = colors.secondary, fontSize = 15.sp)
-    Spacer(Modifier.height(8.dp))
-    Text("Target  ${DurationFormat.hoursMinutes(report.totalTargetMillis)}", color = colors.secondary, fontSize = 14.sp)
+    Spacer(Modifier.height(4.dp))
+    Text("Target  ${DurationFormat.hoursMinutes(report.totalTargetMillis)}", color = colors.secondary, fontSize = 15.sp)
 
-    Spacer(Modifier.height(28.dp))
+    Spacer(Modifier.height(32.dp))
     Hairline()
-    Spacer(Modifier.height(24.dp))
+    Spacer(Modifier.height(28.dp))
     SectionLabel("Missed")
-    Spacer(Modifier.height(8.dp))
-    Text(DurationFormat.hoursMinutes(report.missedMillis), color = colors.text, fontSize = 28.sp, fontWeight = FontWeight.Light)
+    Spacer(Modifier.height(10.dp))
+    Text(DurationFormat.hoursMinutes(report.missedMillis), color = colors.text, fontSize = 32.sp, fontWeight = FontWeight.Light)
+    Spacer(Modifier.height(4.dp))
     Text("Time below target, counted per day.", color = colors.tertiary, fontSize = 13.sp)
 
     report.averageDailyWearMillis?.let { avg ->
         if (report.window.grain != ReportGrain.DAY) {
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(32.dp))
             Hairline()
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(28.dp))
             SectionLabel("Average daily wear")
-            Spacer(Modifier.height(8.dp))
-            Text(DurationFormat.hoursMinutesCompact(avg), color = colors.text, fontSize = 28.sp, fontWeight = FontWeight.Light)
+            Spacer(Modifier.height(10.dp))
+            Text(DurationFormat.hoursMinutes(avg), color = colors.text, fontSize = 32.sp, fontWeight = FontWeight.Light)
         }
     }
 
-    Spacer(Modifier.height(28.dp))
+    Spacer(Modifier.height(32.dp))
     Hairline()
-    Spacer(Modifier.height(24.dp))
-    SectionLabel("Time out")
-    Spacer(Modifier.height(8.dp))
-    Text(DurationFormat.hoursMinutesCompact(report.totalOutMillis), color = colors.text, fontSize = 28.sp, fontWeight = FontWeight.Light)
+    Spacer(Modifier.height(28.dp))
+    SectionLabel("Out")
+    Spacer(Modifier.height(10.dp))
+    Text(DurationFormat.hoursMinutes(report.totalOutMillis), color = colors.text, fontSize = 32.sp, fontWeight = FontWeight.Light)
 
     if (report.completeDaysWithData > 0 && report.window.grain != ReportGrain.DAY) {
         Spacer(Modifier.height(28.dp))
@@ -220,7 +221,7 @@ private fun ReportBody(report: PeriodReport, today: LocalDate) {
                 if (!bucket.hasData) {
                     Text("No data", color = colors.tertiary, fontSize = 14.sp)
                 } else {
-                    Text(DurationFormat.hoursMinutesCompact(bucket.wornMillis), color = colors.secondary, fontSize = 14.sp)
+                    Text(DurationFormat.hoursMinutes(bucket.wornMillis), color = colors.secondary, fontSize = 15.sp)
                 }
             }
         }
@@ -244,7 +245,7 @@ private fun ReportBody(report: PeriodReport, today: LocalDate) {
                     Text("No data", color = colors.tertiary, fontSize = 14.sp)
                 } else {
                     Text(
-                        DurationFormat.hoursMinutesCompact(day.wornMillis),
+                        DurationFormat.hoursMinutes(day.wornMillis),
                         color = colors.secondary,
                         fontSize = 14.sp,
                         modifier = Modifier.padding(end = 12.dp),
@@ -258,4 +259,12 @@ private fun ReportBody(report: PeriodReport, today: LocalDate) {
             }
         }
     }
+}
+
+private fun ReportGrain.label(): String = when (this) {
+    ReportGrain.DAY -> "Day"
+    ReportGrain.WEEK -> "Week"
+    ReportGrain.MONTH -> "Month"
+    ReportGrain.QUARTER -> "Quarter"
+    ReportGrain.YEAR -> "Year"
 }
