@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.Worn" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#121211</item>
+        <item name="android:navigationBarColor">#121211</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">#121211</item>
+    </style>
+</resources>
