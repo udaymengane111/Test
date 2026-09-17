@@ -87,8 +87,19 @@ class RemovalReminderPlannerTest {
     }
 
     @Test
-    fun muteActionKeepsSessionOpen() {
-        assertThat(RemovalReminderPlanner.muteStopsSoundOnly(true, true)).isTrue()
-        assertThat(RemovalReminderPlanner.shouldPostAlert(expiry, expiry, muted = true, paused = false, sessionOpen = true, lastPostedIndex = null)).isFalse()
+    fun repeatsCanBeDisabledWithoutBlockingFirstAlert() {
+        val expiry = 1_000_000L
+        assertThat(
+            RemovalReminderPlanner.nextTriggerMillis(expiry, expiry - 1, muted = false, paused = false, sessionOpen = true, repeatsEnabled = false),
+        ).isEqualTo(expiry)
+        assertThat(
+            RemovalReminderPlanner.shouldPostAlert(expiry, expiry, muted = false, paused = false, sessionOpen = true, lastPostedIndex = null, repeatsEnabled = false),
+        ).isTrue()
+        assertThat(
+            RemovalReminderPlanner.nextTriggerMillis(expiry, expiry, muted = false, paused = false, sessionOpen = true, repeatsEnabled = false),
+        ).isNull()
+        assertThat(
+            RemovalReminderPlanner.shouldPostAlert(expiry, expiry + RemovalReminderPlanner.INTERVAL_MS, muted = false, paused = false, sessionOpen = true, lastPostedIndex = 0, repeatsEnabled = false),
+        ).isFalse()
     }
 }

@@ -23,10 +23,14 @@ object RemovalReminderPlanner {
         paused: Boolean,
         sessionOpen: Boolean,
         lastPostedIndex: Long?,
+        repeatsEnabled: Boolean = true,
+        firstAlertEnabled: Boolean = true,
     ): Boolean {
         if (!sessionOpen || muted || paused || expiryMillis == null) return false
         val index = alertIndex(expiryMillis, nowMillis)
         if (index < 0L) return false
+        if (index == 0L && !firstAlertEnabled) return false
+        if (index > 0L && !repeatsEnabled) return false
         return lastPostedIndex != index
     }
 
@@ -36,9 +40,14 @@ object RemovalReminderPlanner {
         muted: Boolean,
         paused: Boolean,
         sessionOpen: Boolean,
+        repeatsEnabled: Boolean = true,
+        firstAlertEnabled: Boolean = true,
     ): Long? {
         if (!sessionOpen || muted || paused || expiryMillis == null) return null
-        if (nowMillis < expiryMillis) return expiryMillis
+        if (nowMillis < expiryMillis) {
+            return if (firstAlertEnabled) expiryMillis else null
+        }
+        if (!repeatsEnabled) return null
         val index = alertIndex(expiryMillis, nowMillis)
         return expiryMillis + (index + 1L) * INTERVAL_MS
     }

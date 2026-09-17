@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.ServiceCompat
 import app.worn.WornApp
+import app.worn.domain.engine.ActivityTimerCalculator
 import app.worn.domain.model.SessionKind
 import app.worn.notifications.RemovalAlerts
 import app.worn.notifications.WornNotifications
@@ -56,6 +57,7 @@ class RemovalTimerService : Service() {
             RemovalAlerts.sync(this@RemovalTimerService, open)
             ticker?.cancel()
             ticker = launch {
+                var lastOverdue = false
                 while (isActive) {
                     val current = app.repository.openSession()
                     if (current == null || current.kind != SessionKind.REMOVAL) {
@@ -65,11 +67,17 @@ class RemovalTimerService : Service() {
                     }
                     val n = activities.firstOrNull { it.id == current.activityTypeId }?.name ?: "Activity"
                     val manager = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+                    val now = System.currentTimeMillis()
                     manager.notify(
                         WornNotifications.ID_ONGOING,
-                        WornNotifications.ongoing(this@RemovalTimerService, n, current, System.currentTimeMillis()),
+                        WornNotifications.ongoing(this@RemovalTimerService, n, current, now),
                     )
-                    delay(1_000)
+                    val overdue = ActivityTimerCalculator.snapshot(current, now).overdue
+                    if (overdue && !lastOverdue) {
+                        RemovalAlerts.sync(this@RemovalTimerService, current)
+                    }
+                    lastOverdue = overdue
+                    delay(15_000)
                 }
             }
         }

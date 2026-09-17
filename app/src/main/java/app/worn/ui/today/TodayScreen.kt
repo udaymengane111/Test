@@ -1,9 +1,11 @@
 package app.worn.ui.today
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -80,6 +82,7 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
     val muted by RemovalAlerts.muted.collectAsStateWithLifecycle()
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         vm.setNotifications(granted)
+        showActivities = true
     }
     val zone = ZoneId.of(state.settings?.currentZoneId ?: ZoneId.systemDefault().id)
     val headerDate = state.selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMM d"))
@@ -236,29 +239,34 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
                             Text(
                                 DurationFormat.timer(timer.remainingMillis.coerceAtLeast(0)),
                                 color = colors.text,
-                                fontSize = 40.sp,
+                                fontSize = 44.sp,
                                 fontWeight = FontWeight.Light,
                             )
-                            Text("left for ${activityName.lowercase()}", color = colors.secondary, fontSize = 15.sp)
+                            Text("remaining", color = colors.secondary, fontSize = 15.sp)
                         }
                         overdueTimer == true -> {
-                            Text("TIME'S UP", color = colors.warning, fontSize = 13.sp, letterSpacing = 1.2.sp)
+                            Text("TIME'S UP", color = colors.warning, fontSize = 13.sp, letterSpacing = 1.4.sp, fontWeight = FontWeight.Medium)
                             Text(
                                 DurationFormat.timer(timer.overdueMillis),
-                                color = colors.text,
-                                fontSize = 40.sp,
+                                color = colors.warning,
+                                fontSize = 44.sp,
                                 fontWeight = FontWeight.Light,
                             )
-                            Text("over", color = colors.secondary, fontSize = 15.sp)
+                            Text("over — put your aligner back", color = colors.secondary, fontSize = 15.sp)
                         }
                         else -> {
                             Text(
                                 DurationFormat.timer(timer.remainingMillis),
                                 color = colors.text,
-                                fontSize = 40.sp,
+                                fontSize = 44.sp,
                                 fontWeight = FontWeight.Light,
                             )
-                            Text("left for ${activityName.lowercase()}", color = colors.secondary, fontSize = 15.sp)
+                            Text("remaining", color = colors.secondary, fontSize = 15.sp)
+                            Text(
+                                "${DurationFormat.span(timer.elapsedMillis)} elapsed",
+                                color = colors.tertiary,
+                                fontSize = 13.sp,
+                            )
                         }
                     }
                 }
@@ -266,10 +274,15 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
                 if (state.isToday) {
                     if (wearing) {
                         PrimaryButton("REMOVE ALIGNER", onClick = {
-                            if (Build.VERSION.SDK_INT >= 33 && state.settings?.notificationsEnabled != true) {
+                            val needPermission = Build.VERSION.SDK_INT >= 33 &&
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                                PackageManager.PERMISSION_GRANTED
+                            if (needPermission) {
                                 permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                vm.setNotifications(true)
+                                showActivities = true
                             }
-                            showActivities = true
                         })
                     } else {
                         PrimaryButton("PUT ALIGNER BACK", onClick = {

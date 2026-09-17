@@ -1,5 +1,7 @@
 package app.worn.ui.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,8 +37,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.BasicTextField
+import android.Manifest
+import android.os.Build
 import app.worn.domain.model.ActivityType
 import app.worn.notifications.ReplacementReminders
+import app.worn.notifications.WornNotifications
 import app.worn.ui.TodayUiState
 import app.worn.ui.WornViewModel
 import app.worn.ui.components.DaysStepper
@@ -49,6 +54,10 @@ import java.util.UUID
 fun SettingsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
     val colors = WornTheme.colors
     val context = LocalContext.current
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        vm.setNotifications(granted)
+        if (granted) WornNotifications.postSoundTest(context)
+    }
     val settings = state.settings ?: return
     var customHours by remember { mutableStateOf("") }
     var adding by remember { mutableStateOf(false) }
@@ -241,11 +250,52 @@ fun SettingsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
         ) {
             Column(Modifier.weight(1f)) {
                 Text("Removal reminder sound", color = colors.text, fontSize = 16.sp)
-                Text("Short alert every 5 minutes after the timer ends", color = colors.tertiary, fontSize = 13.sp)
+                Text("Play an alert every 5 minutes after the timer ends", color = colors.tertiary, fontSize = 13.sp)
             }
             Switch(
                 checked = settings.removalReminderSoundEnabled,
                 onCheckedChange = vm::setRemovalReminderSound,
+            )
+        }
+        Text(
+            "Test notification sound",
+            color = colors.text,
+            fontSize = 16.sp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = 48.dp)
+                .clickable {
+                    WornNotifications.ensureChannels(context)
+                    if (Build.VERSION.SDK_INT >= 33 && !WornNotifications.notificationsAllowed(context)) {
+                        permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else if (!WornNotifications.timerChannelIsAudible(context)) {
+                        WornNotifications.openTimerChannelSettings(context)
+                    } else {
+                        WornNotifications.postSoundTest(context)
+                    }
+                }
+                .padding(vertical = 12.dp),
+        )
+        Text(
+            "Sends a real notification on the timer reminder channel.",
+            color = colors.tertiary,
+            fontSize = 13.sp,
+        )
+        if (!WornNotifications.timerChannelIsAudible(context) || !WornNotifications.notificationsAllowed(context)) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Sound is off in Android notification settings. Worn cannot override that.",
+                color = colors.warning,
+                fontSize = 13.sp,
+            )
+            Text(
+                "Open timer notification settings",
+                color = colors.text,
+                fontSize = 15.sp,
+                modifier = Modifier
+                    .defaultMinSize(minHeight = 48.dp)
+                    .clickable { WornNotifications.openTimerChannelSettings(context) }
+                    .padding(vertical = 12.dp),
             )
         }
         Row(

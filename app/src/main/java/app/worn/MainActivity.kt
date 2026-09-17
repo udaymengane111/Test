@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.worn.notifications.ReplacementReminders
+import app.worn.notifications.WornNotifications
 import app.worn.service.RemovalTimerService
 import app.worn.ui.WornRoot
 import app.worn.ui.WornViewModel
@@ -28,6 +29,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         RemovalTimerService.sync(this)
         ReplacementReminders.sync(this)
+        WornNotifications.ensureChannels(this)
         handleIntent(intent)
         setContent {
             WornTheme {

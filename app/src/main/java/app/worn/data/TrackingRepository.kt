@@ -66,7 +66,7 @@ class TrackingRepository(
                 SettingsEntity(
                     dailyWearTargetMinutes = 22 * 60,
                     onboardingComplete = false,
-                    notificationsEnabled = false,
+                    notificationsEnabled = true,
                     currentZoneId = zoneProvider().id,
                 ),
             )
@@ -88,7 +88,7 @@ class TrackingRepository(
             SettingsEntity(
                 dailyWearTargetMinutes = targetMinutes,
                 onboardingComplete = true,
-                notificationsEnabled = false,
+                notificationsEnabled = true,
                 currentZoneId = zone.id,
             ),
         )
@@ -358,7 +358,7 @@ class TrackingRepository(
     private fun defaultSettings() = UserSettings(
         dailyWearTargetMinutes = 22 * 60,
         onboardingComplete = false,
-        notificationsEnabled = false,
+        notificationsEnabled = true,
         replacementRemindersEnabled = true,
         replacementIntervalDays = 10,
         removalReminderSoundEnabled = true,
