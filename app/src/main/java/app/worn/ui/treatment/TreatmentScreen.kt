@@ -39,6 +39,7 @@ import app.worn.ui.components.PastOrTodayDatePicker
 import app.worn.ui.components.PrimaryButton
 import app.worn.ui.components.SectionLabel
 import app.worn.ui.components.TreatmentPlanSection
+import app.worn.ui.theme.WornLayout
 import app.worn.ui.theme.WornTheme
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -77,10 +78,10 @@ fun TreatmentScreen(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 28.dp),
+            .padding(horizontal = WornLayout.pagePadding),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("Treatment", color = colors.text, fontSize = 34.sp, fontWeight = FontWeight.Light, modifier = Modifier.weight(1f))
+            Text("Treatment", color = colors.text, fontSize = WornLayout.titleSize, fontWeight = FontWeight.Light, modifier = Modifier.weight(1f))
             IconButton(onClick = onSettings) {
                 Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = colors.secondary)
             }
@@ -91,25 +92,25 @@ fun TreatmentScreen(
                 vm.updateReplacementInterval(days)
                 ReplacementReminders.sync(context)
             }
-            Spacer(Modifier.height(36.dp))
+            Spacer(Modifier.height(28.dp))
             Hairline()
         }
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(20.dp))
         SectionLabel("Current aligner")
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(14.dp))
         if (current != null) {
-            Text("Set ${current.set.setNumber}", color = colors.text, fontSize = 44.sp, fontWeight = FontWeight.Light)
-            Spacer(Modifier.height(8.dp))
+            Text("Set ${current.set.setNumber}", color = colors.text, fontSize = 40.sp, fontWeight = FontWeight.Light)
+            Spacer(Modifier.height(10.dp))
             Text("Started", color = colors.tertiary, fontSize = 13.sp)
             Text(current.start.format(fmt), color = colors.secondary, fontSize = 16.sp)
             Spacer(Modifier.height(16.dp))
             if (schedule?.isOverdue == true) {
-                Text("Replacement overdue", color = colors.warning, fontSize = 13.sp, letterSpacing = 1.2.sp)
-                Spacer(Modifier.height(6.dp))
+                Text("Replacement overdue", color = colors.warning, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.height(4.dp))
                 Text(
                     "${schedule.overdueDays} day${if (schedule.overdueDays == 1L) "" else "s"}",
                     color = colors.warning,
-                    fontSize = 22.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Light,
                 )
                 Text(
@@ -119,7 +120,7 @@ fun TreatmentScreen(
                 )
             } else if (schedule?.dueToday == true) {
                 Text("Next replacement", color = colors.tertiary, fontSize = 13.sp)
-                Text("Today", color = colors.warning, fontSize = 22.sp, fontWeight = FontWeight.Light)
+                Text("Today", color = colors.warning, fontSize = 20.sp, fontWeight = FontWeight.Light)
             } else {
                 Text("Next replacement", color = colors.tertiary, fontSize = 13.sp)
                 Text(
@@ -129,11 +130,16 @@ fun TreatmentScreen(
                 )
             }
         } else {
-            Text("No aligner recorded", color = colors.text, fontSize = 20.sp, fontWeight = FontWeight.Light)
+            Text("No aligner recorded", color = colors.text, fontSize = 22.sp, fontWeight = FontWeight.Light)
             Spacer(Modifier.height(8.dp))
-            Text("Add the set you’re wearing now. You can use the real start date, even if it was in the past.", color = colors.secondary, fontSize = 15.sp)
+            Text(
+                "Add the set you are wearing now. You can use the real start date, even if it was in the past.",
+                color = colors.secondary,
+                fontSize = 15.sp,
+                lineHeight = 22.sp,
+            )
         }
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(24.dp))
         if (!showNew) {
             PrimaryButton(if (current == null) "ADD CURRENT ALIGNER" else "START NEW ALIGNER") {
                 error = null

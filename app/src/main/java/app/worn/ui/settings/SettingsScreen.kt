@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -38,17 +39,20 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.BasicTextField
 import android.Manifest
 import android.os.Build
+import app.worn.domain.engine.DurationFormat
 import app.worn.domain.model.ActivityType
 import app.worn.notifications.ReplacementReminders
 import app.worn.notifications.WornNotifications
 import app.worn.ui.TodayUiState
 import app.worn.ui.WornViewModel
 import app.worn.ui.components.DurationStepper
+import app.worn.ui.components.Hairline
 import app.worn.ui.components.PresetRow
 import app.worn.ui.components.SectionLabel
 import app.worn.ui.components.SettingsNavRow
 import app.worn.ui.components.SettingsToggle
 import app.worn.ui.components.TreatmentPlanSection
+import app.worn.ui.theme.WornLayout
 import app.worn.ui.theme.WornTheme
 import java.util.UUID
 
@@ -72,19 +76,19 @@ fun SettingsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 28.dp),
+            .padding(horizontal = WornLayout.pagePadding),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = colors.text)
             }
-            Text("Settings", color = colors.text, fontSize = 28.sp, fontWeight = FontWeight.Light)
+            Text("Settings", color = colors.text, fontSize = WornLayout.titleSize, fontWeight = FontWeight.Light)
         }
         Spacer(Modifier.height(28.dp))
         SectionLabel("Daily target")
         Spacer(Modifier.height(12.dp))
         Text(
-            "${settings.dailyWearTargetMinutes / 60}h",
+            DurationFormat.hoursMinutes(settings.dailyWearTargetMinutes * 60_000L),
             color = colors.text,
             fontSize = 36.sp,
             fontWeight = FontWeight.Light,
@@ -98,6 +102,7 @@ fun SettingsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
             customHours = ""
             vm.updateTarget(hours * 60)
         }
+        Text("Custom hours", color = colors.secondary, fontSize = 14.sp)
         BasicTextField(
             value = customHours,
             onValueChange = {
@@ -106,13 +111,14 @@ fun SettingsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
             },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
-            textStyle = androidx.compose.ui.text.TextStyle(color = colors.text, fontSize = 16.sp),
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            textStyle = androidx.compose.ui.text.TextStyle(color = colors.text, fontSize = 17.sp),
+            modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).padding(vertical = 8.dp),
             decorationBox = { inner ->
-                if (customHours.isEmpty()) Text("Custom hours", color = colors.tertiary, fontSize = 16.sp)
+                if (customHours.isEmpty()) Text("Hours per day", color = colors.tertiary, fontSize = 17.sp)
                 inner()
             },
         )
+        Hairline()
 
         Spacer(Modifier.height(32.dp))
         SectionLabel("Removal activities")
@@ -128,6 +134,7 @@ fun SettingsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
             ) {
                 Text(activity.name, color = colors.text, fontSize = 16.sp, modifier = Modifier.weight(1f))
                 Text("${activity.defaultDurationMinutes} min", color = colors.secondary, fontSize = 15.sp)
+                Icon(Icons.Outlined.ChevronRight, contentDescription = "Edit ${activity.name}", tint = colors.tertiary, modifier = Modifier.padding(start = 8.dp))
             }
         }
         if (editing != null) {
@@ -152,9 +159,10 @@ fun SettingsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
         if (!adding) {
             Text(
                 "Add activity",
-                color = colors.secondary,
+                color = colors.text,
+                fontSize = 16.sp,
                 modifier = Modifier
-                    .defaultMinSize(minHeight = 44.dp)
+                    .defaultMinSize(minHeight = 48.dp)
                     .clickable { adding = true }
                     .padding(vertical = 12.dp),
             )

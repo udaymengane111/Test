@@ -68,6 +68,7 @@ data class TodayUiState(
 data class HistoryRow(
     val date: LocalDate,
     val totals: DayTotals,
+    val hasData: Boolean = false,
 )
 
 class WornViewModel(
@@ -274,7 +275,11 @@ class WornViewModel(
         val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         fun rowFor(d: LocalDate): HistoryRow {
             val rec = snapshot.recordFor(d, zone, snapshot.settings.dailyWearTargetMinutes)
-            return HistoryRow(d, WearCalculator.totals(snapshot.sessions, rec, nowMillis))
+            return HistoryRow(
+                date = d,
+                totals = WearCalculator.totals(snapshot.sessions, rec, nowMillis),
+                hasData = WearCalculator.segmentsForDay(snapshot.sessions, rec, nowMillis).isNotEmpty(),
+            )
         }
         val thisWeek = (0..6).map { rowFor(monday.plusDays(it.toLong())) }
         val firstSessionDate = snapshot.sessions.minOfOrNull {

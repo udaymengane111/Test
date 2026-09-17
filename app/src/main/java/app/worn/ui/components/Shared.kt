@@ -44,6 +44,7 @@ import app.worn.domain.engine.TimelineSegment
 import app.worn.domain.engine.TimerSnapshot
 import app.worn.domain.model.ActivityType
 import app.worn.domain.model.SessionKind
+import app.worn.ui.theme.WornLayout
 import app.worn.ui.theme.WornTheme
 import java.time.Instant
 import java.time.ZoneId
@@ -64,7 +65,7 @@ fun DayMetrics(
         Metric("Worn", DurationFormat.hoursMinutes(wornMillis), Modifier.weight(1f))
         Metric(
             "Remaining",
-            if (targetReached) "Target reached" else DurationFormat.hoursMinutes(remainingMillis),
+            DurationFormat.hoursMinutes(remainingMillis.coerceAtLeast(0L)),
             Modifier.weight(1f),
             emphasize = targetReached,
         )
@@ -81,9 +82,10 @@ private fun Metric(label: String, value: String, modifier: Modifier = Modifier, 
         Text(
             value,
             color = if (emphasize) colors.accent else colors.text,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Normal,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center,
+            maxLines = 1,
         )
     }
 }
@@ -91,7 +93,7 @@ private fun Metric(label: String, value: String, modifier: Modifier = Modifier, 
 @Composable
 fun WearingStatus(wearing: Boolean) {
     val colors = WornTheme.colors
-    val label = if (wearing) "Aligner in" else "Aligner removed"
+    val label = if (wearing) "Aligner in" else "Aligner out"
     val accent = if (wearing) colors.wearing else colors.removed
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -127,9 +129,9 @@ fun PrimaryButton(
     Box(
         modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 54.dp)
-            .height(54.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .defaultMinSize(minHeight = WornLayout.buttonHeight)
+            .height(WornLayout.buttonHeight)
+            .clip(RoundedCornerShape(WornLayout.buttonRadius))
             .background(background)
             .semantics { role = Role.Button; contentDescription = text }
             .clickable(onClick = onClick),
@@ -365,20 +367,43 @@ fun PresetRow(
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
         options.forEach { value ->
             val on = selected == value
-            Text(
-                formatter(value),
-                color = if (on) colors.text else colors.secondary,
-                fontSize = 18.sp,
-                fontWeight = if (on) FontWeight.Medium else FontWeight.Light,
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .defaultMinSize(minWidth = 56.dp, minHeight = 48.dp)
+                    .defaultMinSize(minWidth = 64.dp, minHeight = 48.dp)
                     .semantics { role = Role.Button }
                     .clickable { onSelect(value) }
-                    .padding(vertical = 12.dp),
-                textAlign = TextAlign.Center,
-            )
+                    .padding(vertical = 8.dp),
+            ) {
+                Text(
+                    formatter(value),
+                    color = if (on) colors.text else colors.secondary,
+                    fontSize = 18.sp,
+                    fontWeight = if (on) FontWeight.Medium else FontWeight.Light,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(6.dp))
+                Box(
+                    Modifier
+                        .width(18.dp)
+                        .height(2.dp)
+                        .background(if (on) colors.text else Color.Transparent),
+                )
+            }
         }
     }
+}
+
+@Composable
+fun ScreenTitle(text: String, modifier: Modifier = Modifier) {
+    val colors = WornTheme.colors
+    Text(
+        text,
+        color = colors.text,
+        fontSize = WornLayout.titleSize,
+        fontWeight = FontWeight.Light,
+        modifier = modifier,
+    )
 }
 
 @Composable

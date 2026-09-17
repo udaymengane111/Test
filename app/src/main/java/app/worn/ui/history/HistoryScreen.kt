@@ -1,5 +1,7 @@
 package app.worn.ui.history
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.Icon
@@ -24,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -34,8 +36,10 @@ import app.worn.ui.HistoryRow
 import app.worn.ui.TodayUiState
 import app.worn.ui.components.Hairline
 import app.worn.ui.components.SectionLabel
+import app.worn.ui.theme.WornLayout
 import app.worn.ui.theme.WornTheme
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
@@ -43,73 +47,78 @@ import java.util.Locale
 @Composable
 fun HistoryScreen(state: TodayUiState, onOpenDay: (LocalDate) -> Unit, onReports: () -> Unit) {
     val colors = WornTheme.colors
-    if (!state.hasHistory) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(horizontal = 28.dp, vertical = 20.dp),
-        ) {
-            Text("History", color = colors.text, fontSize = 34.sp, fontWeight = FontWeight.Light)
-            Spacer(Modifier.height(8.dp))
-            ReportsLink(onReports)
-            Spacer(Modifier.height(48.dp))
-            Text("No history yet", color = colors.text, fontSize = 22.sp, fontWeight = FontWeight.Light)
-            Spacer(Modifier.height(8.dp))
-            Text("Your daily wear history will appear here.", color = colors.secondary, fontSize = 15.sp, lineHeight = 22.sp)
-        }
-        return
-    }
+    val zone = ZoneId.of(state.settings?.currentZoneId ?: ZoneId.systemDefault().id)
+    val today = LocalDate.now(zone)
 
     LazyColumn(
         Modifier
             .fillMaxSize()
-            .padding(horizontal = 28.dp),
+            .padding(horizontal = WornLayout.pagePadding),
     ) {
         item {
-            Spacer(Modifier.height(16.dp))
-            Text("History", color = colors.text, fontSize = 34.sp, fontWeight = FontWeight.Light)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
+            Text("History", color = colors.text, fontSize = WornLayout.titleSize, fontWeight = FontWeight.Light)
+            Spacer(Modifier.height(4.dp))
             ReportsLink(onReports)
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(24.dp))
             SectionLabel("7-day average")
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             Text(
                 DurationFormat.hoursMinutes(state.sevenDayAverageMillis),
                 color = colors.text,
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Light,
             )
+            if (!state.hasHistory) {
+                Spacer(Modifier.height(4.dp))
+                Text("No recorded days yet", color = colors.tertiary, fontSize = 13.sp)
+            }
             Spacer(Modifier.height(28.dp))
             SectionLabel("This week")
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 state.thisWeek.forEach { row ->
+                    val future = row.date.isAfter(today)
+                    val fill = when {
+                        future -> Color.Transparent
+                        row.hasData && row.totals.targetReached -> colors.accent
+                        row.hasData -> colors.removed.copy(alpha = 0.45f)
+                        else -> colors.ringTrack
+                    }
                     Box(
                         Modifier
                             .size(10.dp)
                             .clip(CircleShape)
-                            .background(if (row.totals.targetReached) colors.accent else colors.ringTrack)
+                            .background(fill)
+                            .then(
+                                if (future) Modifier.border(1.dp, colors.ringTrack, CircleShape) else Modifier,
+                            )
                             .semantics {
-                                contentDescription = if (row.totals.targetReached) "Target reached" else "Below target"
+                                contentDescription = when {
+                                    future -> "Upcoming"
+                                    !row.hasData -> "No data"
+                                    row.totals.targetReached -> "Target reached"
+                                    else -> "Below target"
+                                }
                             },
                     )
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(4.dp))
         }
         items(state.thisWeek, key = { "w-${it.date}" }) { row ->
-            HistoryItem(row, weekday = true) { onOpenDay(row.date) }
+            HistoryItem(row, weekday = true, today = today) { onOpenDay(row.date) }
         }
         if (state.earlierDays.isNotEmpty()) {
             item {
-                Spacer(Modifier.height(32.dp))
-                Hairline()
                 Spacer(Modifier.height(28.dp))
+                Hairline()
+                Spacer(Modifier.height(24.dp))
                 SectionLabel("Earlier")
                 Spacer(Modifier.height(8.dp))
             }
             items(state.earlierDays, key = { it.date }) { row ->
-                HistoryItem(row, weekday = false) { onOpenDay(row.date) }
+                HistoryItem(row, weekday = false, today = today) { onOpenDay(row.date) }
             }
         }
         item { Spacer(Modifier.height(40.dp)) }
@@ -117,8 +126,9 @@ fun HistoryScreen(state: TodayUiState, onOpenDay: (LocalDate) -> Unit, onReports
 }
 
 @Composable
-private fun HistoryItem(row: HistoryRow, weekday: Boolean, onClick: () -> Unit) {
+private fun HistoryItem(row: HistoryRow, weekday: Boolean, today: LocalDate, onClick: () -> Unit) {
     val colors = WornTheme.colors
+    val future = row.date.isAfter(today)
     val label = if (weekday) {
         row.date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.getDefault())
     } else {
@@ -126,31 +136,41 @@ private fun HistoryItem(row: HistoryRow, weekday: Boolean, onClick: () -> Unit) 
     }
     val worn = DurationFormat.hoursMinutes(row.totals.wornMillis)
     val pct = DurationFormat.percent(row.totals.progress.coerceAtMost(1f))
+    val value = when {
+        future -> "—"
+        !row.hasData -> "No data"
+        else -> worn
+    }
+    val secondary = when {
+        future || !row.hasData -> ""
+        else -> pct
+    }
     Row(
         Modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 56.dp)
-            .clickable(onClick = onClick)
-            .padding(vertical = 14.dp)
+            .defaultMinSize(minHeight = 52.dp)
+            .clickable(enabled = !future, onClick = onClick)
+            .padding(vertical = 12.dp)
             .semantics(mergeDescendants = true) {
-                contentDescription = "$label $worn $pct"
+                contentDescription = "$label $value $secondary"
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
             Text(label, color = colors.text, fontSize = 16.sp)
-            if (!weekday) {
-                Spacer(Modifier.height(2.dp))
-                Text(row.date.format(DateTimeFormatter.ofPattern("yyyy")), color = colors.tertiary, fontSize = 12.sp)
+            if (row.date == today) {
+                Text("Today", color = colors.tertiary, fontSize = 12.sp)
             }
         }
         Text(
-            worn,
-            color = colors.text,
+            value,
+            color = if (future || !row.hasData) colors.tertiary else colors.text,
             fontSize = 16.sp,
-            modifier = Modifier.padding(end = 14.dp),
+            modifier = Modifier.padding(end = if (secondary.isNotEmpty()) 12.dp else 0.dp),
         )
-        Text(pct, color = colors.tertiary, fontSize = 14.sp)
+        if (secondary.isNotEmpty()) {
+            Text(secondary, color = colors.tertiary, fontSize = 14.sp)
+        }
     }
 }
 
@@ -160,13 +180,13 @@ private fun ReportsLink(onReports: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 48.dp)
+            .defaultMinSize(minHeight = 44.dp)
             .clickable(onClick = onReports)
-            .padding(vertical = 12.dp)
+            .padding(vertical = 8.dp)
             .semantics { contentDescription = "Open reports" },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("Reports", color = colors.text, fontSize = 17.sp, modifier = Modifier.weight(1f))
-        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = colors.secondary)
+        Text("Reports", color = colors.secondary, fontSize = 16.sp, modifier = Modifier.weight(1f))
+        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = colors.tertiary, modifier = Modifier.size(20.dp))
     }
 }

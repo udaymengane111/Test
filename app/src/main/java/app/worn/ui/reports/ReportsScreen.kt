@@ -1,7 +1,9 @@
 package app.worn.ui.reports
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -25,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -38,6 +42,7 @@ import app.worn.ui.TodayUiState
 import app.worn.ui.WornViewModel
 import app.worn.ui.components.Hairline
 import app.worn.ui.components.SectionLabel
+import app.worn.ui.theme.WornLayout
 import app.worn.ui.theme.WornTheme
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -69,29 +74,40 @@ fun ReportsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = WornLayout.pagePadding),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = colors.text)
             }
-            Text("Reports", color = colors.text, fontSize = 28.sp, fontWeight = FontWeight.Light)
+            Text("Reports", color = colors.text, fontSize = WornLayout.titleSize, fontWeight = FontWeight.Light)
         }
         Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
             ReportGrain.entries.forEach { grain ->
                 val selected = state.reportGrain == grain
-                Text(
-                    grain.label(),
-                    color = if (selected) colors.text else colors.secondary,
-                    fontSize = 14.sp,
-                    fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
                         .defaultMinSize(minHeight = 48.dp)
                         .semantics { role = Role.Button }
                         .clickable { vm.setReportGrain(grain) }
-                        .padding(horizontal = 2.dp, vertical = 14.dp),
-                )
+                        .padding(horizontal = 2.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        grain.label(),
+                        color = if (selected) colors.text else colors.secondary,
+                        fontSize = 14.sp,
+                        fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Box(
+                        Modifier
+                            .width(16.dp)
+                            .height(2.dp)
+                            .background(if (selected) colors.text else Color.Transparent),
+                    )
+                }
             }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -130,39 +146,41 @@ fun ReportsScreen(state: TodayUiState, vm: WornViewModel, onBack: () -> Unit) {
 private fun ReportBody(report: PeriodReport, today: LocalDate) {
     val colors = WornTheme.colors
     SectionLabel("Total worn")
-    Spacer(Modifier.height(10.dp))
+    Spacer(Modifier.height(8.dp))
     Text(DurationFormat.hoursMinutes(report.totalWornMillis), color = colors.text, fontSize = 40.sp, fontWeight = FontWeight.Light)
     Spacer(Modifier.height(6.dp))
     Text(DurationFormat.percentPrecise(report.achievement) + " of target", color = colors.secondary, fontSize = 15.sp)
-    Spacer(Modifier.height(4.dp))
-    Text("Target  ${DurationFormat.hoursMinutes(report.totalTargetMillis)}", color = colors.secondary, fontSize = 15.sp)
+    Spacer(Modifier.height(2.dp))
+    Text("Target  ${DurationFormat.hoursMinutes(report.totalTargetMillis)}", color = colors.tertiary, fontSize = 14.sp)
 
-    Spacer(Modifier.height(32.dp))
-    Hairline()
     Spacer(Modifier.height(28.dp))
+    Hairline()
+    Spacer(Modifier.height(24.dp))
     SectionLabel("Missed")
-    Spacer(Modifier.height(10.dp))
+    Spacer(Modifier.height(8.dp))
     Text(DurationFormat.hoursMinutes(report.missedMillis), color = colors.text, fontSize = 32.sp, fontWeight = FontWeight.Light)
     Spacer(Modifier.height(4.dp))
     Text("Time below target, counted per day.", color = colors.tertiary, fontSize = 13.sp)
 
     report.averageDailyWearMillis?.let { avg ->
         if (report.window.grain != ReportGrain.DAY) {
-            Spacer(Modifier.height(32.dp))
-            Hairline()
             Spacer(Modifier.height(28.dp))
+            Hairline()
+            Spacer(Modifier.height(24.dp))
             SectionLabel("Average daily wear")
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             Text(DurationFormat.hoursMinutes(avg), color = colors.text, fontSize = 32.sp, fontWeight = FontWeight.Light)
+            Text("Tracked days only", color = colors.tertiary, fontSize = 13.sp)
         }
     }
 
-    Spacer(Modifier.height(32.dp))
-    Hairline()
     Spacer(Modifier.height(28.dp))
+    Hairline()
+    Spacer(Modifier.height(24.dp))
     SectionLabel("Out")
-    Spacer(Modifier.height(10.dp))
+    Spacer(Modifier.height(8.dp))
     Text(DurationFormat.hoursMinutes(report.totalOutMillis), color = colors.text, fontSize = 32.sp, fontWeight = FontWeight.Light)
+    Text("Time the aligner was out", color = colors.tertiary, fontSize = 13.sp)
 
     if (report.completeDaysWithData > 0 && report.window.grain != ReportGrain.DAY) {
         Spacer(Modifier.height(28.dp))
@@ -190,14 +208,17 @@ private fun ReportBody(report: PeriodReport, today: LocalDate) {
         Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(row.name, color = colors.text, fontSize = 16.sp)
-                val count = if (row.count == 1) "1 time" else "${row.count} times"
                 Text(
-                    if (row.count == 0) DurationFormat.span(0) else "$count · ${DurationFormat.span(row.actualMillis)}",
+                    if (row.count == 0) "None" else if (row.count == 1) "1 time · ${DurationFormat.span(row.actualMillis)}" else "${row.count} times · ${DurationFormat.span(row.actualMillis)}",
                     color = colors.tertiary,
                     fontSize = 13.sp,
                 )
             }
-            Text(DurationFormat.span(row.actualMillis), color = colors.secondary, fontSize = 15.sp)
+            Text(
+                if (row.count == 0) "—" else DurationFormat.hoursMinutes(row.actualMillis),
+                color = colors.secondary,
+                fontSize = 15.sp,
+            )
         }
     }
 

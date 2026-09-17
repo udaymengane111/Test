@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 data class WornColors(
@@ -142,4 +143,11 @@ fun WornTheme(
 object WornTheme {
     val colors: WornColors
         @Composable get() = LocalWornColors.current
+}
+
+object WornLayout {
+    val pagePadding = 24.dp
+    val titleSize = 32.sp
+    val buttonHeight = 52.dp
+    val buttonRadius = 14.dp
 }

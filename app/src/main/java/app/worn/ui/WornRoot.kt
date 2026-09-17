@@ -5,10 +5,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Layers
@@ -75,11 +78,17 @@ fun WornRoot(state: TodayUiState, vm: WornViewModel) {
 
     Scaffold(
         containerColor = colors.background,
-        contentWindowInsets = WindowInsets.safeDrawing,
+        contentWindowInsets = WindowInsets.safeDrawing.only(
+            WindowInsetsSides.Horizontal + WindowInsetsSides.Top,
+        ),
         bottomBar = {
             Column {
                 Box(Modifier.fillMaxWidth().height(1.dp).background(colors.hairline))
-                NavigationBar(containerColor = colors.background, tonalElevation = 0.dp) {
+                NavigationBar(
+                    containerColor = colors.background,
+                    tonalElevation = 0.dp,
+                    windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom),
+                ) {
                     NavItem(tab == Tab.Today, "Today", Icons.Outlined.Schedule) { tab = Tab.Today }
                     NavItem(tab == Tab.History, "History", Icons.Outlined.CalendarMonth) { tab = Tab.History }
                     NavItem(tab == Tab.Treatment, "Treatment", Icons.Outlined.Layers) { tab = Tab.Treatment }
@@ -121,8 +130,9 @@ private fun RowScope.NavItem(
     NavigationBarItem(
         selected = selected,
         onClick = onClick,
-        icon = { Icon(icon, contentDescription = label) },
+        icon = { Icon(icon, contentDescription = label, modifier = Modifier.size(22.dp)) },
         label = { Text(label, fontSize = 11.sp) },
+        alwaysShowLabel = true,
         colors = NavigationBarItemDefaults.colors(
             selectedIconColor = colors.text,
             selectedTextColor = colors.text,

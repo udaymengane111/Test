@@ -65,6 +65,7 @@ import app.worn.ui.components.WearingStatus
 import app.worn.ui.components.activityIcon
 import app.worn.ui.edit.AddIntervalSheet
 import app.worn.ui.edit.EditSegmentSheet
+import app.worn.ui.theme.WornLayout
 import app.worn.ui.theme.WornTheme
 import java.time.LocalDate
 import java.time.ZoneId
@@ -95,7 +96,7 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 28.dp, vertical = 12.dp),
+            .padding(horizontal = WornLayout.pagePadding, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -103,10 +104,10 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
                 Text(
                     if (state.isToday) "Today" else state.selectedDate.format(DateTimeFormatter.ofPattern("EEE d MMM")),
                     color = colors.text,
-                    fontSize = 34.sp,
+                    fontSize = WornLayout.titleSize,
                     fontWeight = FontWeight.Light,
                     modifier = Modifier
-                        .defaultMinSize(minHeight = 48.dp)
+                        .defaultMinSize(minHeight = 44.dp)
                         .clickable { vm.goToday() }
                         .padding(vertical = 4.dp),
                 )
@@ -161,21 +162,28 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
                 Spacer(Modifier.height(4.dp))
                 when {
                     overdue -> {
-                        Text("REPLACEMENT OVERDUE", color = colors.warning, fontSize = 16.sp)
+                        Text("Replacement overdue", color = colors.warning, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                         Text(
                             "${treatment?.overdueDays} day${if (treatment?.overdueDays == 1L) "" else "s"}",
                             color = colors.warning,
                             fontSize = 14.sp,
                         )
                         if (state.isToday) {
-                            Spacer(Modifier.height(12.dp))
-                            PrimaryButton("START NEW ALIGNER") {
-                                vm.requestTreatmentTab()
-                                vm.requestStartNewSet()
-                            }
+                            Text(
+                                "Start new aligner",
+                                color = colors.warning,
+                                fontSize = 15.sp,
+                                modifier = Modifier
+                                    .defaultMinSize(minHeight = 44.dp)
+                                    .clickable {
+                                        vm.requestTreatmentTab()
+                                        vm.requestStartNewSet()
+                                    }
+                                    .padding(vertical = 10.dp),
+                            )
                         }
                     }
-                    dueToday -> Text("NEXT SET DUE TODAY", color = colors.warning, fontSize = 15.sp)
+                    dueToday -> Text("Next set due today", color = colors.warning, fontSize = 15.sp)
                     else -> {
                         val days = treatment?.daysUntilReplacement
                         Text(
@@ -192,7 +200,7 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
             }
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
         WearRing(
             wornMillis = totals.wornMillis,
             targetMillis = totals.targetMillis,
@@ -206,10 +214,10 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
             fontSize = 15.sp,
         )
 
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(20.dp))
         DayMetrics(totals.wornMillis, totals.remainingMillis, totals.notWornMillis, totals.targetReached)
 
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(22.dp))
         AnimatedContent(
             targetState = Triple(state.wearing, state.timer?.paused, state.timer?.overdue),
             transitionSpec = { fadeIn() togetherWith fadeOut() },
@@ -281,7 +289,7 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
                             }
                         })
                     } else {
-                        PrimaryButton("PUT ALIGNER BACK", onClick = {
+                        PrimaryButton("WEAR ALIGNER", onClick = {
                             vm.putBack {
                                 RemovalAlerts.clear(context)
                                 RemovalTimerService.sync(context)
@@ -311,9 +319,9 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
             }
         }
 
-        Spacer(Modifier.height(36.dp))
+        Spacer(Modifier.height(28.dp))
         Hairline()
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(20.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             SectionLabel("Timeline")
             Text(
@@ -350,7 +358,7 @@ fun TodayScreen(state: TodayUiState, vm: WornViewModel) {
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             containerColor = colors.background,
         ) {
-            Column(Modifier.padding(horizontal = 28.dp).padding(bottom = 40.dp)) {
+            Column(Modifier.padding(horizontal = WornLayout.pagePadding).padding(bottom = 40.dp)) {
                 Text("Why are you taking it out?", color = colors.text, fontSize = 22.sp, fontWeight = FontWeight.Light)
                 Spacer(Modifier.height(8.dp))
                 state.activities.forEach { activity ->
